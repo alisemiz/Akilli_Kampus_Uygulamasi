@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "427613469632",
+    "project_id": "akilli-kampus-uygulamasi",
+    "storage_bucket": "akilli-kampus-uygulamasi.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:427613469632:android:37c5672f5e1fa9a0d66625",
+        "android_client_info": {
+          "package_name": "com.alisemiz.akilli_kampus_uygulamasi"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDgo9xlVZ8uIcdq_Q8VSTsuCjENtOmi3cI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
