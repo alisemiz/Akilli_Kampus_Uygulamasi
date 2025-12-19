@@ -8,7 +8,6 @@ import com.alisemiz.akilli_kampus_uygulamasi.databinding.ItemIncidentBinding
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-// Rubrik: Her bildirimin satırında tür ikonu, başlık, açıklama, zaman ve durum bulunur
 class IncidentAdapter(private var list: List<Incident>) :
     RecyclerView.Adapter<IncidentAdapter.IncidentViewHolder>() {
 
@@ -22,24 +21,28 @@ class IncidentAdapter(private var list: List<Incident>) :
     override fun onBindViewHolder(holder: IncidentViewHolder, position: Int) {
         val item = list[position]
         holder.binding.apply {
-            // Rubrik: Başlık ve Açıklama alanları
+            // Verileri metin kutularına bağla [cite: 36, 37]
             tvTitle.text = item.title
             tvDescription.text = item.description
-
-            // Rubrik: Durum alanı (Açık/İnceleniyor/Çözüldü)
             tvStatus.text = item.status
 
-            // Rubrik: Oluşturulma zamanı formatlama
+            // Tarih formatlama [cite: 36]
             val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
             tvDate.text = item.timestamp?.toDate()?.let { sdf.format(it) } ?: ""
 
-            // Not: Tür ikonunu (ivTypeIcon) sonraki aşamada dinamik yapacağız
+            // Rubrik: Tür bazlı farklı ikon kullanımı
+            when (item.type) {
+                "Sağlık" -> ivTypeIcon.setImageResource(android.R.drawable.ic_menu_call)
+                "Güvenlik" -> ivTypeIcon.setImageResource(android.R.drawable.ic_lock_lock)
+                "Teknik" -> ivTypeIcon.setImageResource(android.R.drawable.ic_menu_preferences)
+                "Çevre" -> ivTypeIcon.setImageResource(android.R.drawable.ic_menu_delete)
+                else -> ivTypeIcon.setImageResource(android.R.drawable.ic_dialog_alert)
+            }
         }
     }
 
     override fun getItemCount(): Int = list.size
 
-    // Arama ve filtreleme için listeyi güncelleme fonksiyonu
     fun updateList(newList: List<Incident>) {
         list = newList
         notifyDataSetChanged()
