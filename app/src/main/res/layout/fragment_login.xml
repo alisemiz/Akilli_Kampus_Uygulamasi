@@ -6,16 +6,29 @@
     android:gravity="center"
     android:orientation="vertical"
     android:padding="24dp"
+    android:background="#F5F5F5"
     tools:context=".ui.auth.LoginFragment">
+
+    <TextView
+        android:id="@+id/tvAppTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="KAMPÜS GÜVENLİK\nSİSTEMİ"
+        android:textAlignment="center"
+        android:textSize="26sp"
+        android:textStyle="bold"
+        android:textColor="#1A237E"
+        android:layout_marginBottom="40dp"
+        android:lineSpacingExtra="4dp"/>
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="32dp"
+        android:layout_marginBottom="24dp"
         android:text="Giriş Yap"
-        android:textSize="28sp"
+        android:textSize="20sp"
         android:textStyle="bold"
-        android:textColor="#333333"/>
+        android:textColor="#555555"/>
 
     <EditText
         android:id="@+id/etLoginEmail"
@@ -24,7 +37,7 @@
         android:background="@android:drawable/edit_text"
         android:hint="E-posta Adresi"
         android:inputType="textEmailAddress"
-        android:minHeight="48dp"
+        android:minHeight="50dp"
         android:padding="12dp"
         android:layout_marginBottom="16dp" />
 
@@ -35,7 +48,7 @@
         android:background="@android:drawable/edit_text"
         android:hint="Şifre"
         android:inputType="textPassword"
-        android:minHeight="48dp"
+        android:minHeight="50dp"
         android:padding="12dp"
         android:layout_marginBottom="8dp" />
 
@@ -55,6 +68,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Giriş Yap"
+        android:padding="12dp"
         android:layout_marginBottom="16dp"/>
 
     <TextView
@@ -64,6 +78,6 @@
         android:text="Hesabın yok mu? Kayıt Ol"
         android:textColor="#3F51B5"
         android:textSize="16sp"
-        android:padding="8dp"/>
+        android:padding="12dp"/>
 
 </LinearLayout>

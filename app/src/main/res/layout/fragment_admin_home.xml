@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="#E3F2FD"> <TextView
+    android:id="@+id/tvAdminTitle"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="YÖNETİCİ PANELİ"
+    android:textSize="28sp"
+    android:textStyle="bold"
+    android:textColor="#1565C0"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Tüm bildirimleri buradan yöneteceksiniz."
+        android:layout_marginTop="16dp"
+        android:gravity="center"/>
+
+    <Button
+        android:id="@+id/btnAdminLogout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:text="Oturumu Kapat"
+        android:backgroundTint="#D32F2F"/>
+
+</LinearLayout>

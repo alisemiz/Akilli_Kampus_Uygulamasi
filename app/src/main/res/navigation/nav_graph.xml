@@ -20,6 +20,12 @@
             app:destination="@id/homeFragment"
             app:popUpTo="@id/loginFragment"
             app:popUpToInclusive="true" />
+
+        <action
+            android:id="@+id/action_loginFragment_to_adminHomeFragment"
+            app:destination="@id/adminHomeFragment"
+            app:popUpTo="@id/loginFragment"
+            app:popUpToInclusive="true" />
     </fragment>
 
     <fragment
@@ -40,5 +46,11 @@
         android:name="com.alisemiz.akilli_kampus_uygulamasi.ui.home.HomeFragment"
         android:label="fragment_home"
         tools:layout="@layout/fragment_home" />
+
+    <fragment
+        android:id="@+id/adminHomeFragment"
+        android:name="com.alisemiz.akilli_kampus_uygulamasi.ui.admin.AdminHomeFragment"
+        android:label="Admin Panel"
+        tools:layout="@layout/fragment_admin_home" />
 
 </navigation>

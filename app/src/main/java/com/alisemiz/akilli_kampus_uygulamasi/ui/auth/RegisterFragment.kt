@@ -18,7 +18,6 @@ class RegisterFragment : Fragment() {
     private var _binding: FragmentRegisterBinding? = null
     private val binding get() = _binding!!
 
-    // Firebase araçlarını tanımlıyoruz
     private lateinit var auth: FirebaseAuth
     private lateinit var firestore: FirebaseFirestore
 
@@ -33,7 +32,6 @@ class RegisterFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Firebase'i başlat
         auth = FirebaseAuth.getInstance()
         firestore = FirebaseFirestore.getInstance()
 
@@ -50,67 +48,63 @@ class RegisterFragment : Fragment() {
             val email = binding.etRegisterEmail.text.toString().trim()
             val password = binding.etRegisterPassword.text.toString().trim()
 
-            // 2. Boş alan kontrolü
+            // 2. Kontroller
             if (name.isEmpty() || department.isEmpty() || email.isEmpty() || password.isEmpty()) {
-                Toast.makeText(context, "Lütfen tüm alanları doldurun.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Lütfen tüm alanları doldurun!", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-
-            // 3. Şifre uzunluğu kontrolü (en az 6 karakter)
             if (password.length < 6) {
-                Toast.makeText(context, "Şifre en az 6 karakter olmalı.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Şifre en az 6 karakter olmalı!", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-
-
-            // 4. Butonu Kilitle (Çift tıklamayı ve 'email already in use' hatasını önler diye düşünüyoruz)
+            // Butonu kilitle
             binding.btnRegister.isEnabled = false
-            binding.btnRegister.text = "Kaydediliyor..." // Kullanıcıya bilgi ver
+            binding.btnRegister.text = "Kaydediliyor..."
 
-            // 5. Firebase ile Kayıt İşlemi
+            // 3. Firebase Auth ile Kullanıcı Oluştur
             auth.createUserWithEmailAndPassword(email, password)
                 .addOnSuccessListener { task ->
-                    // Kayıt başarılı oldu, şimdi detayları Firestore'a kaydedelim
                     val userId = task.user!!.uid
 
-                    // User nesnesini oluştur
+                    // ROL MANTIĞI
+                    // varsayılan rol "user".
+                    // Ancak testi kolaylaştırmak için email içinde "admin" geçiyorsa admin yapıyoruz.
+                    // Örn: admin@okul.com -> Admin olur. ali@okul.com -> User olur.
+                    val userRole = if (email.contains("admin")) {
+                        "admin"
+                    } else {
+                        "user"
+                    }
+
+                    // User nesnesini hazırla
                     val newUser = User(
                         uid = userId,
                         name = name,
                         email = email,
                         department = department,
-                        role = "user" // Varsayılan rol
+                        role = userRole
                     )
 
-                    // Firestore 'users' koleksiyonuna kaydet
+                    // 4. Firestore Veritabanına Kaydet
                     firestore.collection("users").document(userId).set(newUser)
                         .addOnSuccessListener {
-                            // BAŞARILI
-                            Toast.makeText(context, "Kayıt Başarılı!", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, "Kayıt Başarılı! Rol: $userRole", Toast.LENGTH_LONG).show()
 
-                            // Giriş ekranına yönlendir
+                            // Başarılı olunca Giriş ekranına at (Auto-login yapmadık, giriş yapsın istiyoruz)
                             findNavController().navigate(R.id.action_registerFragment_to_loginFragment)
-
-                            // Not: Sayfa değiştiği için butonu açmaya gerek yok ama temizlik açısından:
-                            // binding.btnRegister.isEnabled = true
                         }
                         .addOnFailureListener { e ->
-                            // FIRESTORE HATASI
-                            // Eğer veritabanına yazarken hata olursa butonu tekrar açmalıyız
+                            // Firestore hatası
                             binding.btnRegister.isEnabled = true
-                            binding.btnRegister.text = "Kayıt Ol" // Eski metne dön
-
+                            binding.btnRegister.text = "Kayıt Ol"
                             Toast.makeText(context, "Veritabanı Hatası: ${e.message}", Toast.LENGTH_LONG).show()
                         }
                 }
                 .addOnFailureListener { e ->
-                    // AUTH (KAYIT) HATASI
-                    // E-posta zaten varsa veya internet yoksa burası çalışır.
-                    // Butonu tekrar aktif et ki kullanıcı düzeltebilsin diyoruz.
+                    // Auth hatası (Email zaten var vb.)
                     binding.btnRegister.isEnabled = true
-                    binding.btnRegister.text = "Kayıt Ol" // Eski metne dön
-
+                    binding.btnRegister.text = "Kayıt Ol"
                     Toast.makeText(context, "Kayıt Başarısız: ${e.message}", Toast.LENGTH_LONG).show()
                 }
         }
