@@ -52,19 +52,19 @@ class RegisterFragment : Fragment() {
 
             // 2. Boş alan kontrolü
             if (name.isEmpty() || department.isEmpty() || email.isEmpty() || password.isEmpty()) {
-                Toast.makeText(context, "Lütfen tüm alanları doldurun!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Lütfen tüm alanları doldurun.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            // 3. Şifre uzunluğu kontrolü (Firebase en az 6 ister)
+            // 3. Şifre uzunluğu kontrolü (en az 6 karakter)
             if (password.length < 6) {
-                Toast.makeText(context, "Şifre en az 6 karakter olmalı!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Şifre en az 6 karakter olmalı.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
 
 
-            // 4. Butonu Kilitle (Çift tıklamayı ve 'email already in use' hatasını önler)
+            // 4. Butonu Kilitle (Çift tıklamayı ve 'email already in use' hatasını önler diye düşünüyoruz)
             binding.btnRegister.isEnabled = false
             binding.btnRegister.text = "Kaydediliyor..." // Kullanıcıya bilgi ver
 
@@ -86,7 +86,7 @@ class RegisterFragment : Fragment() {
                     // Firestore 'users' koleksiyonuna kaydet
                     firestore.collection("users").document(userId).set(newUser)
                         .addOnSuccessListener {
-                            // --- BAŞARILI ---
+                            // BAŞARILI
                             Toast.makeText(context, "Kayıt Başarılı!", Toast.LENGTH_LONG).show()
 
                             // Giriş ekranına yönlendir
@@ -96,7 +96,7 @@ class RegisterFragment : Fragment() {
                             // binding.btnRegister.isEnabled = true
                         }
                         .addOnFailureListener { e ->
-                            // --- FIRESTORE HATASI ---
+                            // FIRESTORE HATASI
                             // Eğer veritabanına yazarken hata olursa butonu tekrar açmalıyız
                             binding.btnRegister.isEnabled = true
                             binding.btnRegister.text = "Kayıt Ol" // Eski metne dön
@@ -105,9 +105,9 @@ class RegisterFragment : Fragment() {
                         }
                 }
                 .addOnFailureListener { e ->
-                    // --- AUTH (KAYIT) HATASI ---
+                    // AUTH (KAYIT) HATASI
                     // E-posta zaten varsa veya internet yoksa burası çalışır.
-                    // Butonu tekrar aktif et ki kullanıcı düzeltebilsin.
+                    // Butonu tekrar aktif et ki kullanıcı düzeltebilsin diyoruz.
                     binding.btnRegister.isEnabled = true
                     binding.btnRegister.text = "Kayıt Ol" // Eski metne dön
 
