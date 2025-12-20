@@ -68,4 +68,10 @@
             app:argType="string" />
     </fragment>
 
+    <fragment
+        android:id="@+id/addIncidentFragment"
+        android:name="com.alisemiz.akilli_kampus_uygulamasi.ui.add.AddIncidentFragment"
+        android:label="Olay Bildir"
+        tools:layout="@layout/fragment_add_incident" />
+
 </navigation>

@@ -24,6 +24,18 @@
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/btnAddIncident"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentStart="true"
+        android:layout_margin="16dp"
+        android:src="@android:drawable/ic_input_add"
+        android:contentDescription="Olay Ekle"
+        app:backgroundTint="#FF5722"
+        app:tint="#FFFFFF"/>
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/btnOpenMap"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

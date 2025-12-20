@@ -49,6 +49,9 @@ class HomeFragment : Fragment() {
             // Nav graph üzerindeki id: mapFragment
             findNavController().navigate(R.id.mapFragment)
         }
+        binding.btnAddIncident.setOnClickListener {
+            findNavController().navigate(R.id.addIncidentFragment)
+        }
     }
 
     private fun setupRecyclerView() {
