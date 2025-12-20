@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/homeFragment"
+        android:icon="@android:drawable/ic_menu_compass"
+        android:title="Olaylar" />
+
+    <item
+        android:id="@+id/notificationsFragment"
+        android:icon="@android:drawable/ic_popup_reminder"
+        android:title="Takip" />
+
+    <item
+        android:id="@+id/mapFragment"
+        android:icon="@android:drawable/ic_dialog_map"
+        android:title="Harita" />
+
+    <item
+        android:id="@+id/profileFragment"
+        android:icon="@android:drawable/ic_menu_myplaces"
+        android:title="Profil" />
+
+</menu>

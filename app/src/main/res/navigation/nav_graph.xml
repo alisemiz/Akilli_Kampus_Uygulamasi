@@ -79,4 +79,10 @@
         android:label="Profil"
         tools:layout="@layout/fragment_profile" />
 
+    <fragment
+        android:id="@+id/notificationsFragment"
+        android:name="com.alisemiz.akilli_kampus_uygulamasi.ui.notifications.NotificationsFragment"
+        android:label="Bildirimler"
+        tools:layout="@layout/fragment_notifications" />
+
 </navigation>

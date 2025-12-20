@@ -30,8 +30,8 @@ class HomeFragment : Fragment() {
     private val auth = FirebaseAuth.getInstance()
 
     private var isAdmin = false
-    private var tumOlaylar = listOf<Incident>()
-    private var seciliFiltre = "Tümü"
+    private var tumOlaylar = listOf<Incident>() // Veritabanından gelen ham veri
+    private var seciliFiltre = "Tümü" // Varsayılan filtre
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -47,23 +47,27 @@ class HomeFragment : Fragment() {
         // 1. GÜVENLİ ROL KONTROLÜ (Veritabanından)
         checkUserRoleFromFirestore()
 
+        // 2. Arayüz ve Liste Kurulumu
         setupRecyclerView()
         setupSearchView()
         verileriGetir()
 
-        // Navigasyon Butonları
+        // 3. Navigasyon Butonları
         binding.btnOpenMap.setOnClickListener { findNavController().navigate(R.id.mapFragment) }
         binding.btnAddIncident.setOnClickListener { findNavController().navigate(R.id.addIncidentFragment) }
-        view.findViewById<View>(R.id.btnProfile)?.setOnClickListener { findNavController().navigate(R.id.profileFragment) }
+
+
+
+        // Filtre Butonu
         view.findViewById<View>(R.id.btnFilter)?.setOnClickListener { filtreSecimiGoster() }
 
-        // Acil Durum Butonu (Tıklama Özelliği)
+        // Acil Durum Butonu (Sadece Admin görebilir - checkUserRole içinde ayarlanır)
         view.findViewById<View>(R.id.btnEmergency)?.setOnClickListener {
             acilDurumYayinla()
         }
     }
 
-    // --- GÜVENLİ KONTROL FONKSİYONU ---
+    // --- GÜVENLİ ROL KONTROLÜ ---
     private fun checkUserRoleFromFirestore() {
         val uid = auth.currentUser?.uid
         if (uid != null) {
@@ -83,13 +87,14 @@ class HomeFragment : Fragment() {
                     }
                 }
                 .addOnFailureListener {
-                    // İnternet yoksa veya hata varsa güvenli tarafta kal (Admin yapma)
+                    // Hata durumunda güvenli kal (Admin yetkisi verme)
                     isAdmin = false
+                    binding.root.findViewById<View>(R.id.btnEmergency).visibility = View.GONE
                 }
         }
     }
-    // ----------------------------------
 
+    // --- ACİL DURUM YAYINI ---
     private fun acilDurumYayinla() {
         val input = EditText(requireContext())
         input.hint = "Örn: Kampüs tahliye ediliyor!"
@@ -104,12 +109,13 @@ class HomeFragment : Fragment() {
                     val acilDurum = hashMapOf(
                         "title" to "ACİL DURUM UYARISI",
                         "description" to mesaj,
-                        "type" to "Yangın",
+                        "type" to "Yangın", // Kırmızı gözüksün diye
                         "status" to "ACİL",
                         "timestamp" to Timestamp(Date()),
                         "userId" to auth.currentUser!!.uid,
-                        "latitude" to 39.92077,
-                        "longitude" to 32.85411
+                        "latitude" to 39.92077, // Kampüs Merkezi (Örnek)
+                        "longitude" to 32.85411,
+                        "followers" to emptyList<String>()
                     )
 
                     db.collection("incidents").add(acilDurum)
@@ -122,51 +128,77 @@ class HomeFragment : Fragment() {
             .show()
     }
 
+    // --- LİSTE VE FİLTRELEME ---
+    private fun filtreSecimiGoster() {
+        val secenekler = arrayOf("Tümü", "Takip Ettiklerim", "Yangın", "Sağlık", "Güvenlik", "Teknik", "Genel")
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Filtrele")
+            .setItems(secenekler) { _, which ->
+                seciliFiltre = secenekler[which]
+                listeyiGuncelle()
+                Toast.makeText(context, "$seciliFiltre gösteriliyor", Toast.LENGTH_SHORT).show()
+            }
+            .show()
+    }
+
+    private fun listeyiGuncelle(arananKelime: String = "") {
+        val currentUid = auth.currentUser?.uid
+
+        val filtrelenmisListe = tumOlaylar.filter { olay ->
+
+            // 1. FİLTRE KONTROLÜ
+            val turUyumu = when (seciliFiltre) {
+                "Tümü" -> true
+                "Takip Ettiklerim" -> {
+                    // Kullanıcı ID'si, olaydaki followers listesinde var mı?
+                    if (currentUid != null) olay.followers.contains(currentUid) else false
+                }
+                else -> olay.type == seciliFiltre
+            }
+
+            // 2. ARAMA KONTROLÜ
+            val aramaUyumu = if (arananKelime.isEmpty()) true else {
+                olay.title.lowercase().contains(arananKelime.lowercase()) ||
+                        olay.description.lowercase().contains(arananKelime.lowercase())
+            }
+
+            turUyumu && aramaUyumu
+        }
+
+        // Kullanıcıya boş liste uyarısı (Sadece takip edilenlerde)
+        if (seciliFiltre == "Takip Ettiklerim" && filtrelenmisListe.isEmpty() && currentUid != null) {
+            // Opsiyonel: Toast.makeText(context, "Henüz takip ettiğiniz bir olay yok.", Toast.LENGTH_SHORT).show()
+        }
+
+        adapter.updateList(filtrelenmisListe)
+    }
+
     private fun setupRecyclerView() {
         adapter = IncidentAdapter(
             listOf(),
             onClick = { selectedId ->
+                // Detaya Git
                 val bundle = Bundle().apply { putString("incidentId", selectedId) }
                 findNavController().navigate(R.id.incidentDetailFragment, bundle)
             },
             onLongClick = { selectedId ->
+                // Silme (Sadece Admin)
                 if (isAdmin) silmeOnayiGoster(selectedId)
-                else Toast.makeText(context, "Silme yetkiniz yok.", Toast.LENGTH_SHORT).show()
+                else Toast.makeText(context, "Bunu silmek için Admin yetkisi gerekiyor.", Toast.LENGTH_SHORT).show()
             }
         )
         binding.rvIncidents.layoutManager = LinearLayoutManager(context)
         binding.rvIncidents.adapter = adapter
     }
 
-    private fun filtreSecimiGoster() {
-        val secenekler = arrayOf("Tümü", "Yangın", "Sağlık", "Güvenlik", "Teknik", "Genel")
-        AlertDialog.Builder(requireContext())
-            .setTitle("Filtrele")
-            .setItems(secenekler) { _, which ->
-                seciliFiltre = secenekler[which]
-                listeyiGuncelle()
-            }
-            .show()
-    }
-
-    private fun listeyiGuncelle(arananKelime: String = "") {
-        val filtrelenmisListe = tumOlaylar.filter { olay ->
-            val turUyumu = if (seciliFiltre == "Tümü") true else olay.type == seciliFiltre
-            val aramaUyumu = if (arananKelime.isEmpty()) true else {
-                olay.title.lowercase().contains(arananKelime.lowercase()) ||
-                        olay.description.lowercase().contains(arananKelime.lowercase())
-            }
-            turUyumu && aramaUyumu
-        }
-        adapter.updateList(filtrelenmisListe)
-    }
-
     private fun silmeOnayiGoster(incidentId: String) {
         AlertDialog.Builder(context)
             .setTitle("Olayı Sil")
-            .setMessage("Silmek istiyor musunuz?")
+            .setMessage("Bu bildirimi kalıcı olarak silmek istiyor musunuz?")
             .setPositiveButton("SİL") { _, _ ->
                 db.collection("incidents").document(incidentId).delete()
+                    .addOnSuccessListener { Toast.makeText(context, "Silindi.", Toast.LENGTH_SHORT).show() }
             }
             .setNegativeButton("İptal", null)
             .show()
@@ -186,12 +218,20 @@ class HomeFragment : Fragment() {
         db.collection("incidents")
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .addSnapshotListener { value, error ->
-                if (error != null) return@addSnapshotListener
+                if (error != null) {
+                    Toast.makeText(context, "Veri hatası: ${error.message}", Toast.LENGTH_SHORT).show()
+                    return@addSnapshotListener
+                }
+
                 val list = mutableListOf<Incident>()
                 value?.documents?.forEach { doc ->
-                    doc.toObject(Incident::class.java)?.let { list.add(it.copy(id = doc.id)) }
+                    doc.toObject(Incident::class.java)?.let {
+                        // ID'yi Firestore belgesinden alıp nesneye ekliyoruz
+                        list.add(it.copy(id = doc.id))
+                    }
                 }
                 tumOlaylar = list
+                // Veri değişince (veya ilk açılışta) listeyi mevcut filtreye göre güncelle
                 listeyiGuncelle()
             }
     }
