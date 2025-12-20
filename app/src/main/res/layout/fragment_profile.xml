@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="24dp"
+    android:background="#FAFAFA">
+
+    <ImageView
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:src="@android:drawable/sym_def_app_icon"
+        android:layout_marginBottom="16dp"/>
+
+    <TextView
+        android:id="@+id/tvUserEmail"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="kullanici@ogr.atauni.edu.tr"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="#333333"/>
+
+    <TextView
+        android:id="@+id/tvUserRole"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Rol: Yükleniyor..."
+        android:textSize="14sp"
+        android:textColor="#666666"
+        android:layout_marginBottom="32dp"/>
+
+    <Button
+        android:id="@+id/btnLogout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="ÇIKIŞ YAP"
+        android:backgroundTint="#D32F2F"
+        android:textColor="#FFFFFF"
+        android:textStyle="bold"/>
+
+</LinearLayout>

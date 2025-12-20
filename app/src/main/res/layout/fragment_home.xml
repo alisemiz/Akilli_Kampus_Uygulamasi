@@ -1,27 +1,72 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="8dp">
+    android:background="#F5F5F5">
 
-    <androidx.appcompat.widget.SearchView
-        android:id="@+id/searchView"
+    <LinearLayout
+        android:id="@+id/topBarContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="8dp"
         android:layout_alignParentTop="true"
-        android:layout_margin="4dp"
-        android:background="@drawable/ic_launcher_background"
-        app:iconifiedByDefault="false"
-        app:queryHint="Olay başlığı veya açıklama ara..." />
+        android:background="#FFFFFF"
+        android:elevation="4dp">
+
+        <androidx.appcompat.widget.SearchView
+            android:id="@+id/searchView"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            app:queryHint="Olay ara..."
+            app:iconifiedByDefault="false"
+            android:background="@null" />
+
+        <ImageButton
+            android:id="@+id/btnEmergency"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_popup_reminder"
+            app:tint="#D32F2F"
+            android:visibility="gone"
+            android:contentDescription="Acil Durum"
+            android:layout_marginStart="4dp"/>
+
+        <ImageButton
+            android:id="@+id/btnFilter"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_sort_by_size"
+            app:tint="#444444"
+            android:contentDescription="Filtrele"
+            android:layout_marginStart="4dp"/>
+
+        <ImageButton
+            android:id="@+id/btnProfile"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_myplaces"
+            app:tint="#444444"
+            android:contentDescription="Profil"
+            android:layout_marginStart="4dp"/>
+
+    </LinearLayout>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvIncidents"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@id/searchView"
-        android:layout_marginTop="8dp"
-        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+        android:layout_below="@id/topBarContainer"
+        android:padding="8dp"
+        android:clipToPadding="false"
+        tools:listitem="@layout/item_incident" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/btnAddIncident"
@@ -31,9 +76,9 @@
         android:layout_alignParentStart="true"
         android:layout_margin="16dp"
         android:src="@android:drawable/ic_input_add"
-        android:contentDescription="Olay Ekle"
         app:backgroundTint="#FF5722"
-        app:tint="#FFFFFF"/>
+        app:tint="#FFFFFF"
+        android:contentDescription="Olay Ekle"/>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/btnOpenMap"
@@ -42,7 +87,7 @@
         android:layout_alignParentBottom="true"
         android:layout_alignParentEnd="true"
         android:layout_margin="16dp"
-        android:src="@android:drawable/ic_menu_mapmode"
+        android:src="@android:drawable/ic_dialog_map"
         android:contentDescription="Haritayı Aç" />
 
 </RelativeLayout>

@@ -8,9 +8,11 @@ import com.alisemiz.akilli_kampus_uygulamasi.databinding.ItemIncidentBinding
 import java.text.SimpleDateFormat
 import java.util.Locale
 
+// GÜNCELLEME: onLongClick (Uzun basma) parametresi eklendi
 class IncidentAdapter(
     private var incidentList: List<Incident>,
-    private val onClick: (String) -> Unit
+    private val onClick: (String) -> Unit,       // Normal Tıklama (Detay)
+    private val onLongClick: (String) -> Unit    // Uzun Tıklama (Silme)
 ) : RecyclerView.Adapter<IncidentAdapter.IncidentViewHolder>() {
 
     class IncidentViewHolder(val binding: ItemIncidentBinding) : RecyclerView.ViewHolder(binding.root)
@@ -33,22 +35,25 @@ class IncidentAdapter(
             holder.binding.tvDate.text = format.format(date)
         }
 
-        // --- İKON DÜZELTMESİ YAPILDI ---
-        // 'ic_fire' yerine 'ic_dialog_alert' (Ünlem) kullandık.
-        // 'ic_secure' yerine 'ic_lock_lock' (Kilit) kullandık.
-        // Bunlar her Android cihazda %100 vardır.
         val iconRes = when (incident.type) {
-            "Yangın" -> android.R.drawable.ic_dialog_alert // Kırmızı Ünlem
-            "Sağlık" -> android.R.drawable.ic_menu_add    // Artı İşareti (Haç gibi)
-            "Güvenlik" -> android.R.drawable.ic_lock_lock // Kilit
-            "Teknik" -> android.R.drawable.ic_menu_manage // İngiliz Anahtarı
-            else -> android.R.drawable.ic_dialog_info     // Bilgi (i)
+            "Yangın" -> android.R.drawable.ic_dialog_alert
+            "Sağlık" -> android.R.drawable.ic_menu_add
+            "Güvenlik" -> android.R.drawable.ic_lock_lock
+            "Teknik" -> android.R.drawable.ic_menu_manage
+            else -> android.R.drawable.ic_dialog_info
         }
 
         holder.binding.imgIcon.setImageResource(iconRes)
 
+        // Normal Tıklama -> Detaya Git
         holder.itemView.setOnClickListener {
             onClick(incident.id)
+        }
+
+        // YENİ: Uzun Basma -> Silme İşlemini Tetikle
+        holder.itemView.setOnLongClickListener {
+            onLongClick(incident.id)
+            true // true dönersek "tıklama" olayını iptal eder, sadece uzun basmayı çalıştırır
         }
     }
 

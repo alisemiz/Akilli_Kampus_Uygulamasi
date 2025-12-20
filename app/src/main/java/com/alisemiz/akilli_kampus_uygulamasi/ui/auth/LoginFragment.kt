@@ -13,7 +13,6 @@ import androidx.navigation.fragment.findNavController
 import com.alisemiz.akilli_kampus_uygulamasi.R
 import com.alisemiz.akilli_kampus_uygulamasi.databinding.FragmentLoginBinding
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
 
 class LoginFragment : Fragment() {
 
@@ -21,7 +20,6 @@ class LoginFragment : Fragment() {
     private val binding get() = _binding!!
 
     private lateinit var auth: FirebaseAuth
-    private lateinit var firestore: FirebaseFirestore
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -35,13 +33,11 @@ class LoginFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         auth = FirebaseAuth.getInstance()
-        firestore = FirebaseFirestore.getInstance()
 
         // 1. OTOMATİK GİRİŞ KONTROLÜ
-        // Kullanıcı daha önce giriş yaptıysa tekrar sorma, rolünü kontrol et ve yönlendir.
+        // Kullanıcı zaten giriş yapmışsa direkt ana sayfaya al
         if (auth.currentUser != null) {
-            val userId = auth.currentUser!!.uid
-            yonlendirKullaniciyi(userId)
+            anaSayfayaYonlendir()
         }
 
         // Kayıt Ol Ekranına Geçiş
@@ -86,16 +82,15 @@ class LoginFragment : Fragment() {
                 return@setOnClickListener
             }
 
-            // Butonu kilitle (Çift tıklama önlemi)
+            // Butonu kilitle
             binding.btnLogin.isEnabled = false
-            binding.btnLogin.text = "Kontrol Ediliyor..."
+            binding.btnLogin.text = "Giriş Yapılıyor..."
 
             // Firebase Auth Girişi
             auth.signInWithEmailAndPassword(email, password)
                 .addOnSuccessListener {
-                    // Giriş Auth tarafında başarılı, şimdi Rol kontrolü yapalım
-                    val userId = auth.currentUser!!.uid
-                    yonlendirKullaniciyi(userId)
+                    // Başarılı olursa direkt yönlendir
+                    anaSayfayaYonlendir()
                 }
                 .addOnFailureListener { e ->
                     // Hata durumunda butonu aç
@@ -106,38 +101,13 @@ class LoginFragment : Fragment() {
         }
     }
 
-    // ROL KONTROL VE YÖNLENDİRME FONKSİYONU
-    private fun yonlendirKullaniciyi(userId: String) {
-        // Kullanıcıya bilgi ver (Toast veya Loading Bar opsiyonel)
-        // Toast.makeText(context, "Profil yükleniyor...", Toast.LENGTH_SHORT).show()
-
-        firestore.collection("users").document(userId).get()
-            .addOnSuccessListener { document ->
-                if (document != null && document.exists()) {
-                    val role = document.getString("role")
-
-                    if (role == "admin") {
-                        // ADMIN GİRİŞİ
-                        Toast.makeText(context, "Yönetici Girişi Yapıldı", Toast.LENGTH_SHORT).show()
-                        findNavController().navigate(R.id.action_loginFragment_to_adminHomeFragment)
-                    } else {
-                        // USER (ÖĞRENCİ) GİRİŞİ
-                        Toast.makeText(context, "Giriş Başarılı", Toast.LENGTH_SHORT).show()
-                        findNavController().navigate(R.id.action_loginFragment_to_homeFragment)
-                    }
-                } else {
-                    // Doküman yoksa varsayılan User kabul et
-                    findNavController().navigate(R.id.action_loginFragment_to_homeFragment)
-                }
-            }
-            .addOnFailureListener {
-                // İnternet kopuksa veya Firestore hatası varsa
-                if (_binding != null) {
-                    binding.btnLogin.isEnabled = true
-                    binding.btnLogin.text = "Giriş Yap"
-                }
-                Toast.makeText(context, "Veri çekilemedi, interneti kontrol edin.", Toast.LENGTH_SHORT).show()
-            }
+    // TEK YÖNLENDİRME FONKSİYONU
+    // Admin de olsa User da olsa hepsi 'homeFragment'a gider.
+    // Yetki kontrolü HomeFragment içinde yapılır.
+    private fun anaSayfayaYonlendir() {
+        Toast.makeText(context, "Giriş Başarılı", Toast.LENGTH_SHORT).show()
+        // AdminHomeFragment yönlendirmesini kaldırdık, herkes HomeFragment'a gidiyor.
+        findNavController().navigate(R.id.action_loginFragment_to_homeFragment)
     }
 
     override fun onDestroyView() {

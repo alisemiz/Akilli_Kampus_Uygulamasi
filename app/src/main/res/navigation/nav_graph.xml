@@ -73,5 +73,10 @@
         android:name="com.alisemiz.akilli_kampus_uygulamasi.ui.add.AddIncidentFragment"
         android:label="Olay Bildir"
         tools:layout="@layout/fragment_add_incident" />
+    <fragment
+        android:id="@+id/profileFragment"
+        android:name="com.alisemiz.akilli_kampus_uygulamasi.ui.profile.ProfileFragment"
+        android:label="Profil"
+        tools:layout="@layout/fragment_profile" />
 
 </navigation>
