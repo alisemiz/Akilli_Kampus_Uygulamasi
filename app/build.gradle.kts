@@ -59,4 +59,6 @@ dependencies {
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("com.google.firebase:firebase-storage-ktx")
+    // OpenStreetMap Kütüphanesi
+    implementation("org.osmdroid:osmdroid-android:6.1.16")
 }

@@ -7,7 +7,9 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.widget.SearchView
 import androidx.fragment.app.Fragment
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.alisemiz.akilli_kampus_uygulamasi.R
 import com.alisemiz.akilli_kampus_uygulamasi.data.model.Incident
 import com.alisemiz.akilli_kampus_uygulamasi.databinding.FragmentHomeBinding
 import com.google.firebase.firestore.FirebaseFirestore
@@ -37,11 +39,32 @@ class HomeFragment : Fragment() {
 
         setupRecyclerView()
         setupSearchView()
+
+        // Verileri çekme fonksiyonunu çağırıyoruz (Syntax hatası düzeltildi)
         verileriGetir()
+
+        // --- YENİ EKLENEN KISIM: HARİTA BUTONU ---
+        // xml dosyasında eklediğin id: btnOpenMap
+        binding.btnOpenMap.setOnClickListener {
+            // Nav graph üzerindeki id: mapFragment
+            findNavController().navigate(R.id.mapFragment)
+        }
     }
 
     private fun setupRecyclerView() {
-        adapter = IncidentAdapter(listOf())
+        // Adapter artık bizden bir "tıklama işlemi" bekliyor
+        adapter = IncidentAdapter(listOf()) { selectedId ->
+
+            // Tıklanınca yapılacak işlem:
+            // Bir paket (Bundle) oluştur ve ID'yi içine koy
+            val bundle = Bundle().apply {
+                putString("incidentId", selectedId)
+            }
+
+            // O paketle beraber Detay Sayfasına git
+            findNavController().navigate(R.id.incidentDetailFragment, bundle)
+        }
+
         binding.rvIncidents.layoutManager = LinearLayoutManager(context)
         binding.rvIncidents.adapter = adapter
     }
@@ -80,6 +103,7 @@ class HomeFragment : Fragment() {
                 val list = mutableListOf<Incident>()
                 value?.documents?.forEach { doc ->
                     doc.toObject(Incident::class.java)?.let {
+                        // Belge ID'sini de nesneye ekliyoruz ki tıklanınca detayına gidebilelim
                         list.add(it.copy(id = doc.id))
                     }
                 }

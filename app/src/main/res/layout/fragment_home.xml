@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -7,23 +7,30 @@
 
     <androidx.appcompat.widget.SearchView
         android:id="@+id/searchView"
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
         android:layout_margin="4dp"
         android:background="@drawable/ic_launcher_background"
         app:iconifiedByDefault="false"
-        app:queryHint="Olay başlığı veya açıklama ara..."
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:queryHint="Olay başlığı veya açıklama ara..." />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvIncidents"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
+        android:layout_height="match_parent"
+        android:layout_below="@id/searchView"
         android:layout_marginTop="8dp"
-        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-        app:layout_constraintTop_toBottomOf="@id/searchView"
-        app:layout_constraintBottom_toBottomOf="parent" />
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/btnOpenMap"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true"
+        android:layout_margin="16dp"
+        android:src="@android:drawable/ic_menu_mapmode"
+        android:contentDescription="Haritayı Aç" />
+
+</RelativeLayout>
