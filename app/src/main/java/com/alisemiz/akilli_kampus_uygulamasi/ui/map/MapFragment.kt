@@ -12,6 +12,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.alisemiz.akilli_kampus_uygulamasi.R
+import com.alisemiz.akilli_kampus_uygulamasi.data.model.Incident
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import org.osmdroid.config.Configuration
@@ -31,7 +32,6 @@ class MapFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        // OSM Konfigürasyonunu yükle (Harita önbelleği için gerekli)
         Configuration.getInstance().load(context, PreferenceManager.getDefaultSharedPreferences(context))
         return inflater.inflate(R.layout.fragment_map, container, false)
     }
@@ -39,19 +39,17 @@ class MapFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // 1. Harita Ayarları
         map = view.findViewById(R.id.map)
         map.setTileSource(TileSourceFactory.MAPNIK)
-        map.setMultiTouchControls(true) // İki parmakla zoom açıldı
+        map.setMultiTouchControls(true)
 
-        // Başlangıç noktası
-        val startPoint = GeoPoint(39.92077, 32.85411)
-        map.controller.setZoom(15.0)
-        map.controller.setCenter(startPoint)
+        // --- HEDEF GÜNCELLEMESİ: Erzurum Atatürk Üniversitesi Kampüsü ---
+        val kampüsMerkezi = GeoPoint(39.9048, 41.2572)
+        map.controller.setZoom(16.0) // Kampüs binalarını görmek için ideal seviye
+        map.controller.setCenter(kampüsMerkezi)
 
         firestore = FirebaseFirestore.getInstance()
 
-        // Verileri veritabanından çek ve haritaya diz
         verileriCekVeIsaretle()
     }
 
@@ -59,7 +57,6 @@ class MapFragment : Fragment() {
         firestore.collection("incidents").get()
             .addOnSuccessListener { documents ->
                 for (document in documents) {
-                    // Verileri güvenli şekilde al
                     val lat = document.getDouble("latitude")
                     val lng = document.getDouble("longitude")
                     val title = document.getString("title") ?: "Olay"
@@ -68,72 +65,53 @@ class MapFragment : Fragment() {
 
                     if (lat != null && lng != null) {
                         val point = GeoPoint(lat, lng)
-
-                        // Marker (Pin) Oluştur
                         val marker = Marker(map)
                         marker.position = point
-
-
-
-                        // 1. Başlık
                         marker.title = title
 
-                        // 2. Zaman Bilgisi ("Ne kadar önce?" formatında)
                         val timeAgo = zamanFarkiHesapla(timestamp)
-
-                        // 3. Bilgi Kartı İçeriği (Snippet)
-                        // Kartta Tür, Zaman ve Yönlendirme mesajı olacak
                         marker.snippet = "Tür: $type\n$timeAgo\n(Detay için tekrar tıkla)"
 
-                        // 4. Renkli İkonlar (Türe göre farklılaşan pinler)
                         val iconDrawable = getIconForType(requireContext(), type)
                         if (iconDrawable != null) {
                             marker.icon = iconDrawable
                         }
 
-                        // Baloncuğun konumu
                         marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
 
-                        // 5. Tıklama ve Yönlendirme Mantığı
-                        marker.setOnMarkerClickListener { m, mapView ->
+                        marker.setOnMarkerClickListener { m, _ ->
                             if (m.isInfoWindowShown) {
-                                // Eğer baloncuk zaten açıksa, kullanıcı DETAYA gitmek istiyordur.
-                                // "Detayı Gör" işlevi burada çalışır.
                                 val bundle = Bundle().apply {
                                     putString("incidentId", document.id)
                                 }
                                 findNavController().navigate(R.id.incidentDetailFragment, bundle)
                             } else {
-                                // Baloncuk kapalıysa aç
                                 m.showInfoWindow()
                             }
                             true
                         }
-
-                        // Pini haritaya ekle
                         map.overlays.add(marker)
                     }
                 }
-                // Haritayı yenile
                 map.invalidate()
             }
             .addOnFailureListener {
-                Toast.makeText(context, "Veriler yüklenemedi", Toast.LENGTH_SHORT).show()
+                if (isAdded) {
+                    Toast.makeText(context, "Veriler yüklenemedi", Toast.LENGTH_SHORT).show()
+                }
             }
     }
 
-    // Tura Göre Renkli İkon Seçimi
     private fun getIconForType(context: Context, type: String): Drawable? {
         val iconRes = when (type) {
-            "Yangın" -> android.R.drawable.ic_dialog_alert // Kırmızı Ünlem
-            "Sağlık" -> android.R.drawable.ic_menu_add    // Artı İşareti
-            "Güvenlik" -> android.R.drawable.ic_lock_lock // Kilit
-            "Teknik" -> android.R.drawable.ic_menu_manage // Tamir Aleti
-            else -> android.R.drawable.ic_dialog_info     // Bilgi İkonu
+            "Yangın" -> android.R.drawable.ic_dialog_alert
+            "Sağlık" -> android.R.drawable.ic_menu_add
+            "Güvenlik" -> android.R.drawable.ic_lock_lock
+            "Teknik" -> android.R.drawable.ic_menu_manage
+            else -> android.R.drawable.ic_dialog_info
         }
         val drawable = ContextCompat.getDrawable(context, iconRes)
 
-        // İkonu boya (Tint)
         drawable?.setTint(
             when (type) {
                 "Yangın" -> ContextCompat.getColor(context, android.R.color.holo_red_dark)
@@ -146,7 +124,6 @@ class MapFragment : Fragment() {
         return drawable
     }
 
-    //  Zaman Farkı Hesaplama
     private fun zamanFarkiHesapla(timestamp: Timestamp?): String {
         if (timestamp == null) return ""
 
@@ -166,7 +143,6 @@ class MapFragment : Fragment() {
         }
     }
 
-    // Lifecycle (Yaşam Döngüsü) Yönetimi
     override fun onResume() {
         super.onResume()
         map.onResume()
