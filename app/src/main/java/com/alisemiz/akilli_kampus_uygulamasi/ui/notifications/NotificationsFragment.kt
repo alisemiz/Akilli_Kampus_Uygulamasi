@@ -40,16 +40,14 @@ class NotificationsFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        // Mevcut IncidentAdapter'ı yeniden kullanıyoruz (Kod tekrarı yok!)
         adapter = IncidentAdapter(
             listOf(),
             onClick = { selectedId ->
-                // Detaya git
                 val bundle = Bundle().apply { putString("incidentId", selectedId) }
                 findNavController().navigate(R.id.incidentDetailFragment, bundle)
             },
             onLongClick = {
-                // Bildirim ekranında silme işlemi olmasın, sadece görüntüleme
+                // Bildirim ekranında uzun basma işlemi devre dışı
             }
         )
         binding.rvNotifications.layoutManager = LinearLayoutManager(context)
@@ -59,15 +57,22 @@ class NotificationsFragment : Fragment() {
     private fun takipEdilenleriGetir() {
         val uid = auth.currentUser?.uid
         if (uid == null) {
-            binding.tvEmptyState.visibility = View.VISIBLE
+            // Binding kontrolü burada da önemli
+            if (_binding != null) {
+                binding.tvEmptyState.visibility = View.VISIBLE
+            }
             return
         }
 
-        // SORGULAMA: 'followers' listesinde benim ID'm var mı?
         db.collection("incidents")
             .whereArrayContains("followers", uid)
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .addSnapshotListener { value, error ->
+
+                // --- ÇÖKMEYİ ENGELLEYEN KRİTİK KONTROL ---
+                // Eğer fragment ekrandan ayrılmışsa veya binding yok edilmişse işlemi durdur
+                if (_binding == null || !isAdded) return@addSnapshotListener
+
                 if (error != null) {
                     Toast.makeText(context, "Hata: ${error.message}", Toast.LENGTH_SHORT).show()
                     return@addSnapshotListener

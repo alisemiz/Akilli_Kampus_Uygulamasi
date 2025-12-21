@@ -1,5 +1,20 @@
 <resources>
-    <string name="app_name">Akilli_Kampus_Uygulamasi</string>
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="app_name">Akilli Kampus Uygulamasi</string>
+    <string name="loading_title">Başlık Yükleniyor...</string>
+    <string name="incident_type_label">Tür: %s</string>
+    <string name="date_label">Tarih</string>
+    <string name="description_label">Açıklama</string>
+    <string name="incident_location_label">Olay Konumu</string>
+    <string name="follow_button_text">TAKİP ET</string>
+    <string name="followed_btn">TAKİP ET</string>
+    <string name="unfollowed_btn">TAKİBİ BIRAK</string>
+    <string name="admin_panel_title">YÖNETİCİ PANELİ</string>
+    <string name="admin_save_button">DEĞİŞİKLİKLERİ KAYDET</string>
+    <string name="back_button_desc">Geri butonu</string>
+    <string name="incident_image_desc">Olay görseli</string>
+
+    <string name="follow_success">Başarıyla takip edildi.</string>
+    <string name="unfollow_success">Takip bırakıldı.</string>
+    <string name="update_success">Olay güncellendi!</string>
+    <string name="error_id_not_found">Hata: ID bulunamadı</string>
 </resources>
