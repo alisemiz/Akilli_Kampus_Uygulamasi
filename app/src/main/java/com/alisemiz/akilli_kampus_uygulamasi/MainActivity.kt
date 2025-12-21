@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.view.View // Görünürlük ayarı için eklendi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
@@ -23,8 +24,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
-
-    // Veritabanı dinleyicisi (Değişiklikleri takip eder)
     private var notificationListener: ListenerRegistration? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,22 +33,34 @@ class MainActivity : AppCompatActivity() {
 
         val navHostFragment = supportFragmentManager.findFragmentById(R.id.fragmentContainerView) as NavHostFragment
         val navController = navHostFragment.navController
+
+        // Alt menüyü navigasyona bağla
         binding.bottomNavigationView.setupWithNavController(navController)
 
-        // Android 8.0+ için bildirim kanalı oluştur
+        //Giriş ve Kayıt ekranlarında barı gizle
+        navController.addOnDestinationChangedListener { _, destination, _ ->
+            when (destination.id) {
+                // nav_graph.xml dosyasındaki ID'lere göre kontrol yapıyoruz
+                R.id.loginFragment, R.id.registerFragment -> {
+                    binding.bottomNavigationView.visibility = View.GONE
+                }
+                else -> {
+                    binding.bottomNavigationView.visibility = View.VISIBLE
+                }
+            }
+        }
+
         createNotificationChannel()
     }
 
+
     override fun onResume() {
         super.onResume()
-        // Uygulama ekrana gelince dinlemeyi başlat
         baslatBildirimTakibi()
     }
 
     override fun onPause() {
         super.onPause()
-        // Uygulamadan çıkınca pili korumak için dinlemeyi durdurabilirsin.
-        // Ama gerçek zamanlı olsun istiyorsan burayı yorum satırı yapabilirsin.
         notificationListener?.remove()
     }
 
@@ -57,22 +68,18 @@ class MainActivity : AppCompatActivity() {
         val uid = auth.currentUser?.uid ?: return
         val sharedPref = getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
 
-        // 1. Kullanıcı ayarlardan bildirimleri kapattı mı?
         if (!sharedPref.getBoolean("notifications_enabled", true)) {
-            return // Kapalıysa dinleme yapma
+            return
         }
 
-        // Eski dinleyici varsa temizle
         notificationListener?.remove()
 
-        // 2. Sadece BENİM TAKİP ETTİĞİM (followers listesinde olduğum) olayları dinle
         notificationListener = db.collection("incidents")
             .whereArrayContains("followers", uid)
             .addSnapshotListener { snapshots, e ->
                 if (e != null) return@addSnapshotListener
 
                 for (doc in snapshots!!.documentChanges) {
-                    // Sadece olay GÜNCELLENDİYSE (MODIFIED) bildirim at
                     if (doc.type == DocumentChange.Type.MODIFIED) {
                         val title = doc.document.getString("title") ?: "Olay"
                         val newStatus = doc.document.getString("status") ?: "Güncellendi"
@@ -84,20 +91,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun bildirimGonder(baslik: String, icerik: String) {
-        // Android 13 (Tiramisu) ve üzeri için İzin Kontrolü
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                // İzin yoksa gönderme (Normalde burada izin istenir ama basit tutuyoruz)
                 return
             }
         }
 
         val builder = NotificationCompat.Builder(this, "CHANNEL_ID")
-            .setSmallIcon(android.R.drawable.ic_dialog_info) // Bildirim ikonu
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(baslik)
             .setContentText(icerik)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true) // Tıklayınca kaybolsun
+            .setAutoCancel(true)
 
         with(NotificationManagerCompat.from(this)) {
             notify(System.currentTimeMillis().toInt(), builder.build())
@@ -105,7 +110,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun createNotificationChannel() {
-        // Android 8.0 (Oreo) ve üzeri için kanal zorunluluğu
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "Olay Bildirimleri"
             val descriptionText = "Takip edilen olayların durum güncellemeleri"
