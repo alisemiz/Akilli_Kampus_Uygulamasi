@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#F5F5F5">
@@ -10,7 +9,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:padding="16dp">
 
         <ImageButton
             android:id="@+id/btnBack"
@@ -20,104 +19,59 @@
             android:src="@android:drawable/ic_menu_revert"
             app:tint="#333333" />
 
+        <ImageView
+            android:id="@+id/ivDetailImage"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:layout_marginTop="16dp"
+            android:scaleType="centerCrop"
+            android:src="@android:drawable/ic_menu_gallery"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/tvDetailTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Başlık Yükleniyor..."
-            android:textSize="22sp"
+            android:textSize="24sp"
             android:textStyle="bold"
-            android:textColor="#000000"
-            android:layout_marginTop="16dp"/>
+            android:textColor="#212121"
+            android:layout_marginTop="12dp"/>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:layout_marginTop="8dp">
-
-            <TextView
-                android:id="@+id/tvDetailDate"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Tarih"
-                android:textColor="#666666"/>
-
+            <TextView android:id="@+id/tvDetailDate" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#757575"/>
             <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1"/>
-
-            <TextView
-                android:id="@+id/tvDetailStatus"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="DURUM"
-                android:textStyle="bold"
-                android:textColor="#1976D2"/>
+            <TextView android:id="@+id/tvDetailStatus" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textStyle="bold" android:textColor="#1976D2"/>
         </LinearLayout>
 
-        <View
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E0E0E0" android:layout_marginVertical="16dp"/>
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Olay Konumu" android:textStyle="bold" android:layout_marginBottom="8dp"/>
+        <org.osmdroid.views.MapView
+            android:id="@+id/mapDetail"
             android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="#E0E0E0"
-            android:layout_marginVertical="16dp"/>
+            android:layout_height="180dp"
+            android:layout_marginBottom="16dp" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Açıklama"
-            android:textStyle="bold"
-            android:layout_marginBottom="4dp"/>
-
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Açıklama" android:textStyle="bold" android:layout_marginBottom="4dp"/>
         <EditText
             android:id="@+id/etDetailDescription"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@android:color/transparent"
-            android:padding="8dp"
-            android:text="Açıklama yükleniyor..."
+            android:background="@drawable/bg_edittext_detail"
+            android:padding="12dp"
             android:textSize="16sp"
-            android:textColor="#333333"
             android:enabled="false" />
-        <Button
-            android:id="@+id/btnFollow"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="TAKİP ET"
-            android:backgroundTint="#4CAF50"
-            android:visibility="gone"/> <LinearLayout
-        android:id="@+id/adminPanel"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:background="#E3F2FD"
-        android:padding="16dp"
-        android:layout_marginTop="24dp"
-        android:visibility="gone"> <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="YÖNETİCİ PANELİ"
-        android:textStyle="bold"
-        android:textColor="#1565C0"/>
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Durumu Güncelle:"
-            android:layout_marginTop="8dp"/>
+        <Button android:id="@+id/btnFollow" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="24dp" android:text="TAKİP ET" android:backgroundTint="#4CAF50" android:visibility="gone"/>
 
-        <Spinner
-            android:id="@+id/spinnerStatusUpdate"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:background="@android:drawable/btn_dropdown"/>
-
-        <Button
-            android:id="@+id/btnAdminSave"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="DEĞİŞİKLİKLERİ KAYDET"
-            android:layout_marginTop="16dp"/>
-    </LinearLayout>
-
+        <LinearLayout android:id="@+id/adminPanel" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:background="#E3F2FD" android:padding="16dp" android:layout_marginTop="24dp" android:visibility="gone">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="YÖNETİCİ PANELİ" android:textStyle="bold" android:textColor="#1565C0"/>
+            <Spinner android:id="@+id/spinnerStatusUpdate" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="8dp"/>
+            <Button android:id="@+id/btnAdminSave" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="DEĞİŞİKLİKLERİ KAYDET" android:layout_marginTop="16dp"/>
+        </LinearLayout>
     </LinearLayout>
 </ScrollView>
