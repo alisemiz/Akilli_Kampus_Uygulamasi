@@ -23,6 +23,8 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.overlay.Marker
 import java.text.SimpleDateFormat
 import java.util.Locale
+import com.bumptech.glide.Glide
+
 
 class IncidentDetailFragment : Fragment() {
 
@@ -54,40 +56,41 @@ class IncidentDetailFragment : Fragment() {
     }
 
     private fun verileriGetir(id: String) {
-        db.collection("incidents").document(id).get().addOnSuccessListener { document ->
-            if (document.exists() && isAdded) {
-                val incident = document.toObject(Incident::class.java)
-                if (incident != null) {
-                    binding.tvDetailTitle.text = incident.title
-                    binding.etDetailDescription.setText(incident.description)
-                    binding.tvDetailStatus.text = incident.status.uppercase()
+        db.collection("incidents").document(id).get()
+            .addOnSuccessListener { document ->
+                if (document.exists() && isAdded) {
+                    val incident = document.toObject(Incident::class.java)
+                    if (incident != null) {
+                        binding.tvDetailTitle.text = incident.title
+                        binding.etDetailDescription.setText(incident.description)
+                        binding.tvDetailStatus.text = incident.status.uppercase()
 
-                    // Harita Ayarları
-                    Configuration.getInstance().load(requireContext(), PreferenceManager.getDefaultSharedPreferences(requireContext()))
-                    val point = GeoPoint(incident.latitude, incident.longitude)
-                    binding.mapDetail.controller.setZoom(17.5)
-                    binding.mapDetail.controller.setCenter(point)
+                        //Görseli Glide ile Yükle
+                        if (incident.imageUrl.isNotEmpty()) {
+                            binding.ivDetailImage.visibility = View.VISIBLE
+                            Glide.with(this).load(incident.imageUrl).into(binding.ivDetailImage)
+                        }
 
-                    val marker = Marker(binding.mapDetail)
-                    marker.position = point
-                    marker.title = incident.type
-                    binding.mapDetail.overlays.clear()
-                    binding.mapDetail.overlays.add(marker)
-                    binding.mapDetail.invalidate()
+                        //Haritayı Olay Konumuna Odakla
+                        val point = GeoPoint(incident.latitude, incident.longitude)
+                        binding.mapDetail.controller.setZoom(18.0)
+                        binding.mapDetail.controller.setCenter(point)
 
-                    // Görsel Kontrolü
-                    if (incident.imageUrl.isNotEmpty()) {
-                        binding.ivDetailImage.visibility = View.VISIBLE
+                        val marker = Marker(binding.mapDetail)
+                        marker.position = point
+                        marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                        binding.mapDetail.overlays.clear()
+                        binding.mapDetail.overlays.add(marker)
+                        binding.mapDetail.invalidate()
+
+                        incident.timestamp?.let {
+                            val format = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale("tr", "TR"))
+                            binding.tvDetailDate.text = format.format(it.toDate())
+                        }
+                        setupSpinner(incident.status)
                     }
-
-                    incident.timestamp?.let {
-                        val format = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale("tr", "TR"))
-                        binding.tvDetailDate.text = format.format(it.toDate())
-                    }
-                    setupSpinner(incident.status)
                 }
             }
-        }
     }
 
     private fun rolKontroluYap() {

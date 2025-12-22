@@ -53,12 +53,14 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     // Firebase Platform
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
-
-// İhtiyacımız olan modüller
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("com.google.firebase:firebase-storage-ktx")
+
     // OpenStreetMap Kütüphanesi
     implementation("org.osmdroid:osmdroid-android:6.1.16")
+
+    //Glide Resim Kütüphanesi
+    implementation("com.github.bumptech.glide:glide:4.16.0")
 }

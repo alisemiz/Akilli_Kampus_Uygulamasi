@@ -7,6 +7,7 @@ import com.alisemiz.akilli_kampus_uygulamasi.data.model.Incident
 import com.alisemiz.akilli_kampus_uygulamasi.databinding.ItemIncidentBinding
 import java.text.SimpleDateFormat
 import java.util.Locale
+import com.bumptech.glide.Glide
 
 // GÜNCELLEME: onLongClick (Uzun basma) parametresi eklendi
 class IncidentAdapter(
@@ -28,6 +29,17 @@ class IncidentAdapter(
         holder.binding.tvTitle.text = incident.title
         holder.binding.tvDescription.text = incident.description
         holder.binding.tvStatus.text = incident.status
+
+        if (incident.imageUrl.isNotEmpty()) {
+            holder.binding.imgIncidentPhoto.visibility = android.view.View.VISIBLE
+            Glide.with(holder.itemView.context)
+                .load(incident.imageUrl)
+                .centerCrop()
+                .placeholder(android.R.drawable.ic_menu_gallery)
+                .into(holder.binding.imgIncidentPhoto)
+        } else {
+            holder.binding.imgIncidentPhoto.visibility = android.view.View.GONE
+        }
 
         if (incident.timestamp != null) {
             val date = incident.timestamp!!.toDate()
