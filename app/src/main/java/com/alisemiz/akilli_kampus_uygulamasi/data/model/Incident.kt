@@ -10,9 +10,8 @@ data class Incident(
     val status: String = "",
     val latitude: Double = 0.0,
     val longitude: Double = 0.0,
-    val userId: String = "",
+    val creatorUid: String = "",
     val timestamp: Timestamp? = null,
-    // Takipçilerin ID listesi
-    // Eğer veritabanında bu alan yoksa boş liste olarak gelir, çökme yapmaz.
+    val imageUrl: String = "",
     val followers: List<String> = emptyList()
 )
