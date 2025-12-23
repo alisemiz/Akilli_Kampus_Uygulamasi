@@ -14,7 +14,6 @@ import com.alisemiz.akilli_kampus_uygulamasi.MainActivity
 import com.alisemiz.akilli_kampus_uygulamasi.R
 import com.alisemiz.akilli_kampus_uygulamasi.data.model.Incident
 import com.alisemiz.akilli_kampus_uygulamasi.databinding.FragmentProfileBinding
-import com.alisemiz.akilli_kampus_uygulamasi.ui.home.IncidentAdapter
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -26,7 +25,9 @@ class ProfileFragment : Fragment() {
 
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseFirestore.getInstance()
-    private lateinit var adapter: IncidentAdapter
+
+    // DİKKAT: Artık NotificationAdapter kullanıyoruz
+    private lateinit var adapter: NotificationAdapter
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -39,18 +40,14 @@ class ProfileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Başlangıçta listeyi gizleyelim, rol belli olunca açarız
+        // Başlangıçta gizle
         binding.tvFollowHeader.visibility = View.GONE
         binding.rvFollowedIncidents.visibility = View.GONE
         binding.tvEmptyState.visibility = View.GONE
 
-        // 1. Profil ve Rol Ayarları (Listeyi buna göre açacağız)
         setupProfileAndRole()
-
-        // 2. Bildirim Ayarlarını Yönet
         setupNotificationSettings()
 
-        // Çıkış Yap Butonu
         binding.btnLogout.setOnClickListener {
             auth.signOut()
             val intent = Intent(requireContext(), MainActivity::class.java)
@@ -71,23 +68,24 @@ class ProfileFragment : Fragment() {
                         val role = document.getString("role") ?: "user"
 
                         if (role == "admin") {
-                            // --- ADMIN GÖRÜNÜMÜ ---
+                            // Admin Görünümü
                             binding.tvUserRole.text = "Rol: YÖNETİCİ (ADMIN)"
                             binding.tvUnitInfo.text = "Birim: Rektörlük / Güvenlik Merkezi"
 
-                            // Adminin takip listesine ihtiyacı yok, gizli kalsın
+                            // Admin için liste GİZLİ
                             binding.tvFollowHeader.visibility = View.GONE
                             binding.rvFollowedIncidents.visibility = View.GONE
-                            binding.tvEmptyState.visibility = View.GONE
                         } else {
-                            // --- KULLANICI GÖRÜNÜMÜ ---
+                            // Kullanıcı Görünümü
                             binding.tvUserRole.text = "Rol: ÖĞRENCİ / PERSONEL"
                             binding.tvUnitInfo.text = "Birim: Mühendislik Fakültesi"
 
-                            // Kullanıcı için takip listesini GÖSTER ve YÜKLE
+                            // Başlığı değiştiriyoruz: "Son Bildirimler"
+                            binding.tvFollowHeader.text = "Son Bildirimler"
                             binding.tvFollowHeader.visibility = View.VISIBLE
                             binding.rvFollowedIncidents.visibility = View.VISIBLE
-                            setupFollowedList()
+
+                            setupNotificationList()
                         }
                     }
                 }
@@ -113,21 +111,22 @@ class ProfileFragment : Fragment() {
         }
     }
 
-    private fun setupFollowedList() {
-        // Bu fonksiyon sadece USER ise çağrılır
+    private fun setupNotificationList() {
         val uid = auth.currentUser?.uid ?: return
 
-        adapter = IncidentAdapter(
+        // Yeni Adapter'ı bağlıyoruz
+        adapter = NotificationAdapter(
             listOf(),
             onClick = { selectedId ->
+                // Tıklayınca yine detaya gitsin
                 val bundle = Bundle().apply { putString("incidentId", selectedId) }
                 findNavController().navigate(R.id.incidentDetailFragment, bundle)
-            },
-            onLongClick = {} // Profilde silme yok
+            }
         )
         binding.rvFollowedIncidents.layoutManager = LinearLayoutManager(context)
         binding.rvFollowedIncidents.adapter = adapter
 
+        // Takip ettiğim olayları çek
         db.collection("incidents")
             .whereArrayContains("followers", uid)
             .orderBy("timestamp", Query.Direction.DESCENDING)
@@ -144,6 +143,7 @@ class ProfileFragment : Fragment() {
                 adapter.updateList(list)
 
                 if (list.isEmpty()) {
+                    binding.tvEmptyState.text = "Henüz bir bildirim yok."
                     binding.tvEmptyState.visibility = View.VISIBLE
                     binding.rvFollowedIncidents.visibility = View.GONE
                 } else {
