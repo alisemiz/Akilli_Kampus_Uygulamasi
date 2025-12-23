@@ -8,8 +8,8 @@
     <fragment
         android:id="@+id/loginFragment"
         android:name="com.alisemiz.akilli_kampus_uygulamasi.ui.auth.LoginFragment"
-        android:label="fragment_login"
-        tools:layout="@layout/fragment_login" >
+        android:label="Giriş Yap"
+        tools:layout="@layout/fragment_login">
 
         <action
             android:id="@+id/action_loginFragment_to_registerFragment"
@@ -20,20 +20,13 @@
             app:destination="@id/homeFragment"
             app:popUpTo="@id/loginFragment"
             app:popUpToInclusive="true" />
-
-        <action
-            android:id="@+id/action_loginFragment_to_adminHomeFragment"
-            app:destination="@id/adminHomeFragment"
-            app:popUpTo="@id/loginFragment"
-            app:popUpToInclusive="true" />
     </fragment>
 
     <fragment
         android:id="@+id/registerFragment"
         android:name="com.alisemiz.akilli_kampus_uygulamasi.ui.auth.RegisterFragment"
-        android:label="fragment_register"
-        tools:layout="@layout/fragment_register" >
-
+        android:label="Kayıt Ol"
+        tools:layout="@layout/fragment_register">
         <action
             android:id="@+id/action_registerFragment_to_loginFragment"
             app:destination="@id/loginFragment"
@@ -44,25 +37,29 @@
     <fragment
         android:id="@+id/homeFragment"
         android:name="com.alisemiz.akilli_kampus_uygulamasi.ui.home.HomeFragment"
-        android:label="fragment_home"
-        tools:layout="@layout/fragment_home" />
+        android:label="Olaylar"
+        tools:layout="@layout/fragment_home">
 
-    <fragment
-        android:id="@+id/adminHomeFragment"
-        android:name="com.alisemiz.akilli_kampus_uygulamasi.ui.admin.AdminHomeFragment"
-        android:label="Admin Panel"
-        tools:layout="@layout/fragment_admin_home" />
+        <action
+            android:id="@+id/action_homeFragment_to_incidentDetailFragment"
+            app:destination="@id/incidentDetailFragment" />
+
+        <action
+            android:id="@+id/action_homeFragment_to_addIncidentFragment"
+            app:destination="@id/addIncidentFragment" />
+    </fragment>
+
     <fragment
         android:id="@+id/mapFragment"
         android:name="com.alisemiz.akilli_kampus_uygulamasi.ui.map.MapFragment"
         android:label="Kampüs Haritası"
         tools:layout="@layout/fragment_map" />
+
     <fragment
         android:id="@+id/incidentDetailFragment"
         android:name="com.alisemiz.akilli_kampus_uygulamasi.ui.detail.IncidentDetailFragment"
         android:label="Olay Detayı"
         tools:layout="@layout/fragment_incident_detail">
-
         <argument
             android:name="incidentId"
             app:argType="string" />
@@ -73,6 +70,7 @@
         android:name="com.alisemiz.akilli_kampus_uygulamasi.ui.add.AddIncidentFragment"
         android:label="Olay Bildir"
         tools:layout="@layout/fragment_add_incident" />
+
     <fragment
         android:id="@+id/profileFragment"
         android:name="com.alisemiz.akilli_kampus_uygulamasi.ui.profile.ProfileFragment"
@@ -82,7 +80,12 @@
     <fragment
         android:id="@+id/notificationsFragment"
         android:name="com.alisemiz.akilli_kampus_uygulamasi.ui.notifications.NotificationsFragment"
-        android:label="Bildirimler"
-        tools:layout="@layout/fragment_notifications" />
+        android:label="Takip Ettiklerim"
+        tools:layout="@layout/fragment_notifications">
+
+        <action
+            android:id="@+id/action_notificationsFragment_to_incidentDetailFragment"
+            app:destination="@id/incidentDetailFragment" />
+    </fragment>
 
 </navigation>

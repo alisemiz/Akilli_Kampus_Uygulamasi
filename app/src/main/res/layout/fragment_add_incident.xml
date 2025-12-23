@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#FFFFFF"
@@ -24,31 +25,55 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="Olay Başlığı"
+            app:boxBackgroundMode="none"
             android:layout_marginBottom="16dp">
+
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etIncidentTitle"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_edittext_detail"
+                android:padding="12dp" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="Detaylı Açıklama"
+            app:boxBackgroundMode="none"
             android:layout_marginBottom="16dp">
+
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etIncidentDesc"
                 android:layout_width="match_parent"
                 android:layout_height="100dp"
                 android:gravity="top"
-                android:inputType="textMultiLine"/>
+                android:inputType="textMultiLine"
+                android:background="@drawable/bg_edittext_detail"
+                android:padding="12dp"/>
         </com.google.android.material.textfield.TextInputLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Konum Seçin:"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
 
         <org.osmdroid.views.MapView
             android:id="@+id/mapAdd"
             android:layout_width="match_parent"
             android:layout_height="250dp"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/bg_edittext_detail"
+            android:clipToOutline="true"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Olay Türü:"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
 
         <Spinner
             android:id="@+id/spinnerType"
@@ -80,6 +105,8 @@
             android:layout_height="60dp"
             android:text="BİLDİRİMİ GÖNDER"
             android:backgroundTint="#D1C4E9"
-            android:textColor="#4527A0"/>
+            android:textColor="#4527A0"
+            android:textStyle="bold"/>
+
     </LinearLayout>
 </ScrollView>
