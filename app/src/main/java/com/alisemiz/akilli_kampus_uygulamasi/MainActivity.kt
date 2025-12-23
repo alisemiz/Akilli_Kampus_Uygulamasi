@@ -26,12 +26,13 @@ class MainActivity : AppCompatActivity() {
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
 
-    // İki farklı dinleyiciye ihtiyacımız var:
-    private var followListener: ListenerRegistration? = null    // Takip ettiklerim için
-    private var emergencyListener: ListenerRegistration? = null // Genel acil durumlar için
-
-    // Uygulama açılış zamanını tutuyoruz (Eski acil durumlar bildirim atmasın diye)
+    // Bildirim Dinleyicileri
+    private var followListener: ListenerRegistration? = null
+    private var emergencyListener: ListenerRegistration? = null
     private val appStartTime = Date()
+
+    // Auth Durum Dinleyicisi (Giriş/Çıkış algılamak için)
+    private lateinit var authStateListener: FirebaseAuth.AuthStateListener
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,84 +42,115 @@ class MainActivity : AppCompatActivity() {
         val navHostFragment = supportFragmentManager.findFragmentById(R.id.fragmentContainerView) as NavHostFragment
         val navController = navHostFragment.navController
 
-        // Alt menüyü navigasyona bağla
+        // Alt menüyü bağla
         binding.bottomNavigationView.setupWithNavController(navController)
 
-        // Giriş ve Kayıt ekranlarında alt barı gizle
+        // Login/Register ekranlarında menüyü komple gizle
         navController.addOnDestinationChangedListener { _, destination, _ ->
             when (destination.id) {
-                R.id.loginFragment, R.id.registerFragment -> {
-                    binding.bottomNavigationView.visibility = View.GONE
-                }
-                else -> {
-                    binding.bottomNavigationView.visibility = View.VISIBLE
-                }
+                R.id.loginFragment, R.id.registerFragment -> binding.bottomNavigationView.visibility = View.GONE
+                else -> binding.bottomNavigationView.visibility = View.VISIBLE
             }
         }
 
+        // Bildirim Kanalını Oluştur
         createNotificationChannel()
+
+        // Auth Listener Tanımla: Kullanıcı değiştiğinde menüyü güncelle
+        authStateListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
+            val user = firebaseAuth.currentUser
+            if (user != null) {
+                // Kullanıcı varsa rolünü kontrol et ve menüyü ayarla
+                checkRoleAndAdjustMenu(user.uid)
+                baslatBildirimTakibi() // Bildirimleri de başlat
+            } else {
+                // Kullanıcı yoksa dinleyicileri temizle
+                followListener?.remove()
+                emergencyListener?.remove()
+            }
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // Dinleyiciyi başlat
+        auth.addAuthStateListener(authStateListener)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Dinleyiciyi durdur
+        auth.removeAuthStateListener(authStateListener)
+    }
+
+    // --- YENİ EKLENEN FONKSİYON: Menü Ayarı ---
+    private fun checkRoleAndAdjustMenu(uid: String) {
+        db.collection("users").document(uid).get()
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    val role = document.getString("role")
+                    val menu = binding.bottomNavigationView.menu
+
+                    if (role == "admin") {
+                        // Admin ise "notificationsFragment" (Takip) sekmesini GİZLE
+                        // Not: Menü ID'si nav_graph ID'si ile aynı olmalı
+                        menu.findItem(R.id.notificationsFragment)?.isVisible = false
+                    } else {
+                        // Admin değilse GÖSTER
+                        menu.findItem(R.id.notificationsFragment)?.isVisible = true
+                    }
+                }
+            }
     }
 
     override fun onResume() {
         super.onResume()
-        baslatBildirimTakibi()
+        if (auth.currentUser != null) {
+            baslatBildirimTakibi()
+        }
     }
 
     override fun onPause() {
         super.onPause()
-        // Uygulama arka plana atıldığında dinlemeyi durduruyoruz
-        // (Pil tasarrufu için. Gerçek zamanlı istersen burayı silebilirsin.)
-        followListener?.remove()
-        emergencyListener?.remove()
+        // Test için kapatmıyoruz, normalde pil tasarrufu için açılabilir
+        // followListener?.remove()
+        // emergencyListener?.remove()
     }
 
     private fun baslatBildirimTakibi() {
         val uid = auth.currentUser?.uid ?: return
         val sharedPref = getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
 
-        // Kullanıcı ayarlardan bildirimleri kapattıysa çık
-        if (!sharedPref.getBoolean("notifications_enabled", true)) {
-            return
-        }
+        if (!sharedPref.getBoolean("notifications_enabled", true)) return
 
-        // Önceki dinleyicileri temizle
         followListener?.remove()
         emergencyListener?.remove()
 
-        // 1. DİNLEYİCİ: Takip Ettiğim Olayların Durum Değişikliği
+        // 1. Takip Ettiklerim
         followListener = db.collection("incidents")
             .whereArrayContains("followers", uid)
             .addSnapshotListener { snapshots, e ->
                 if (e != null) return@addSnapshotListener
-
                 for (doc in snapshots!!.documentChanges) {
-                    // Sadece durum DEĞİŞTİĞİNDE (Modified) bildirim at
                     if (doc.type == DocumentChange.Type.MODIFIED) {
                         val title = doc.document.getString("title") ?: "Olay"
                         val newStatus = doc.document.getString("status") ?: "Güncellendi"
-
                         bildirimGonder("Durum Güncellemesi", "$title durumu '$newStatus' oldu.")
                     }
                 }
             }
 
-        // 2. DİNLEYİCİ: Genel ACİL Durum Bildirimleri (Rubrik 8. Madde)
+        // 2. Acil Durumlar
         emergencyListener = db.collection("incidents")
-            .whereEqualTo("status", "ACİL") // Sadece ACİL olanları dinle
+            .whereEqualTo("status", "ACİL")
             .addSnapshotListener { snapshots, e ->
                 if (e != null) return@addSnapshotListener
-
                 for (doc in snapshots!!.documentChanges) {
-                    // Yeni bir acil durum EKLENDİĞİNDE (Added)
                     if (doc.type == DocumentChange.Type.ADDED) {
                         val timestamp = doc.document.getTimestamp("timestamp")?.toDate()
-
-                        // Sadece uygulama açıldıktan SONRA eklenenleri bildir
-                        // (Yoksa geçmişteki tüm acil durumlar her açılışta öter)
                         if (timestamp != null && timestamp.after(appStartTime)) {
                             val title = doc.document.getString("title") ?: "ACİL DURUM"
                             val desc = doc.document.getString("description") ?: "Kampüste acil durum!"
-
                             bildirimGonder("⚠️ $title", desc)
                         }
                     }
@@ -127,38 +159,27 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun bildirimGonder(baslik: String, icerik: String) {
-        // Android 13+ İzin Kontrolü
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                return
-            }
+            if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
         }
-
         val builder = NotificationCompat.Builder(this, "CHANNEL_ID")
-            .setSmallIcon(android.R.drawable.stat_sys_warning) // İkonu uyarı ikonu yaptık
+            .setSmallIcon(android.R.drawable.stat_sys_warning)
             .setContentTitle(baslik)
             .setContentText(icerik)
-            .setPriority(NotificationCompat.PRIORITY_MAX) // Acil durum için en yüksek öncelik
-            .setVibrate(longArrayOf(0, 500, 200, 500)) // Titreşim ekledik
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setVibrate(longArrayOf(0, 500, 200, 500))
             .setAutoCancel(true)
 
-        with(NotificationManagerCompat.from(this)) {
-            notify(System.currentTimeMillis().toInt(), builder.build())
-        }
+        with(NotificationManagerCompat.from(this)) { notify(System.currentTimeMillis().toInt(), builder.build()) }
     }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = "Olay Bildirimleri"
-            val descriptionText = "Acil durum ve takip bildirimleri"
-            val importance = NotificationManager.IMPORTANCE_HIGH
-            val channel = NotificationChannel("CHANNEL_ID", name, importance).apply {
-                description = descriptionText
-                enableVibration(true) // Kanalda titreşimi açtık
+            val channel = NotificationChannel("CHANNEL_ID", "Olay Bildirimleri", NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "Acil durum ve takip bildirimleri"
+                enableVibration(true)
             }
-            val notificationManager: NotificationManager =
-                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
+            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
     }
 }
