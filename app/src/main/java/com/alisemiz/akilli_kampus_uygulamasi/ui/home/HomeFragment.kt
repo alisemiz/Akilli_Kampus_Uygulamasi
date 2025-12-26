@@ -30,7 +30,7 @@ class HomeFragment : Fragment() {
     private val auth = FirebaseAuth.getInstance()
 
     private var isAdmin = false
-    private var tumOlaylar = listOf<Incident>() // Artık BURADA HEPSİ DURACAK
+    private var tumOlaylar = listOf<Incident>() // Veritabanındaki HAM veriler
     private var seciliFiltre = "Tümü"
 
     override fun onCreateView(
@@ -44,15 +44,20 @@ class HomeFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // 1. Yetki ve Arayüz Kurulumları
         checkUserRoleFromFirestore()
         setupRecyclerView()
         setupSearchView()
+
+        // 2. Verileri Getir
         verileriGetirVeAyikla()
 
+        // 3. Tıklama Olayları
         binding.btnOpenMap.setOnClickListener { findNavController().navigate(R.id.mapFragment) }
         binding.btnAddIncident.setOnClickListener { findNavController().navigate(R.id.addIncidentFragment) }
         binding.btnFilter.setOnClickListener { filtreSecimiGoster() }
 
+        // Admin butonu (Başlangıçta gizli)
         binding.btnEmergency.visibility = View.GONE
         binding.btnEmergency.setOnClickListener { acilDurumYayinla() }
     }
@@ -90,10 +95,16 @@ class HomeFragment : Fragment() {
     }
 
     private fun verileriGetirVeAyikla() {
-        // Tüm olayları çekiyoruz
+        // Tüm olayları tarihe göre (Yeniden eskiye) çekiyoruz
         db.collection("incidents").orderBy("timestamp", Query.Direction.DESCENDING)
             .addSnapshotListener { value, error ->
-                if (error != null) return@addSnapshotListener
+
+                // Hata varsa veya veri yoksa BOŞ ekran göster
+                if (error != null) {
+                    binding.rvIncidents.visibility = View.GONE
+                    binding.layoutEmptyState.visibility = View.VISIBLE
+                    return@addSnapshotListener
+                }
 
                 val geciciListe = mutableListOf<Incident>()
                 var latestEmergency: Incident? = null
@@ -102,17 +113,17 @@ class HomeFragment : Fragment() {
                     val incident = doc.toObject(Incident::class.java)?.copy(id = doc.id)
 
                     if (incident != null) {
-                        // Hepsini ana listeye ekle (Filtrede kullanacağız)
+                        // Hepsini ana listeye ekle (Filtrede ayıklayacağız)
                         geciciListe.add(incident)
 
-                        // En son eklenen ACİL durumu bul (Banner için)
+                        // En güncel ACİL durumu yakala (Banner için)
                         if (incident.status == "ACİL" && latestEmergency == null) {
                             latestEmergency = incident
                         }
                     }
                 }
 
-                // Banner Yönetimi
+                // --- 1. BANNER YÖNETİMİ ---
                 if (latestEmergency != null) {
                     binding.cardEmergencyBanner.visibility = View.VISIBLE
                     binding.tvEmergencyText.text = latestEmergency!!.description
@@ -124,7 +135,7 @@ class HomeFragment : Fragment() {
                     binding.cardEmergencyBanner.visibility = View.GONE
                 }
 
-                // Listeyi kaydet ve güncelle
+                // --- 2. LİSTE GÜNCELLEME ---
                 tumOlaylar = geciciListe
                 listeyiGuncelle()
             }
@@ -133,51 +144,56 @@ class HomeFragment : Fragment() {
     private fun listeyiGuncelle(aranan: String = "") {
         val uid = auth.currentUser?.uid
 
+        // Filtreleme Mantığı
         val filtrelenmis = tumOlaylar.filter { olay ->
 
-            // 1. AŞAMA: Kategori/Filtre Mantığı
+            // A. Kategoriye Göre
             val turUyumu = when (seciliFiltre) {
-                // "Tümü" seçiliyse: ACİL olanları GİZLE (Çünkü tepede banner var)
+                // "Tümü" ise: ACİL olanları listede gösterme (Tepede banner var zaten)
                 "Tümü" -> olay.status != "ACİL"
 
-                // "Acil Durumlar" seçiliyse: SADECE ACİL olanları GÖSTER
+                // "Acil Durumlar" ise: SADECE ACİL olanları göster
                 "Acil Durumlar" -> olay.status == "ACİL"
 
                 // "Takip Ettiklerim"
                 "Takip Ettiklerim" -> if (uid != null) olay.followers.contains(uid) else false
 
-                // Diğer kategoriler (Yangın, Sağlık vb.) - Bunlarda ACİL varsa da göstersin mi?
-                // Karışmasın diye burada da ACİL olmayanları filtreleyebilirsin,
-                // ama genelde kategori seçince o kategorideki her şeyi görmek isterler.
-                // Biz şimdilik sadece türüne bakalım:
+                // Diğer Tipler (Yangın, Sağlık vb.)
                 else -> olay.type == seciliFiltre
             }
 
-            // 2. AŞAMA: Arama Çubuğu
+            // B. Arama Çubuğuna Göre
             val aramaUyumu = if (aranan.isEmpty()) true else olay.title.lowercase().contains(aranan.lowercase())
 
             turUyumu && aramaUyumu
         }
 
         adapter.updateList(filtrelenmis)
+
+        // --- 3. BOŞ LİSTE KONTROLÜ (GÜNCELLENDİ) ---
+        if (filtrelenmis.isEmpty()) {
+            // Liste boşsa: RecyclerView gizle, Resimli uyarıyı göster
+            binding.rvIncidents.visibility = View.GONE
+            binding.layoutEmptyState.visibility = View.VISIBLE
+        } else {
+            // Liste doluysa: Uyarıyı gizle, Listeyi göster
+            binding.rvIncidents.visibility = View.VISIBLE
+            binding.layoutEmptyState.visibility = View.GONE
+        }
     }
 
     private fun filtreSecimiGoster() {
-        // Seçeneklere "Acil Durumlar" ekledik
         val secenekler = arrayOf("Tümü", "Acil Durumlar", "Takip Ettiklerim", "Yangın", "Sağlık", "Güvenlik", "Teknik")
 
         AlertDialog.Builder(requireContext())
             .setTitle("Filtrele")
             .setItems(secenekler) { _, which ->
                 seciliFiltre = secenekler[which]
-                // Filtre değişince Arama çubuğunu da temizlemek iyi olabilir (isteğe bağlı)
-                // binding.searchView.setQuery("", false)
                 listeyiGuncelle()
             }
             .show()
     }
 
-    // ... (silmeOnayiGoster, acilDurumYayinla, setupSearchView kodları aynı) ...
     private fun silmeOnayiGoster(incidentId: String) {
         AlertDialog.Builder(requireContext())
             .setTitle("Olayı Sil")

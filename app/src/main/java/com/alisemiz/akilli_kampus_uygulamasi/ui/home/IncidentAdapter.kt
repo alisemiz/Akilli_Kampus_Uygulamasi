@@ -1,15 +1,17 @@
 package com.alisemiz.akilli_kampus_uygulamasi.ui.home
 
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
+import com.alisemiz.akilli_kampus_uygulamasi.R
 import com.alisemiz.akilli_kampus_uygulamasi.data.model.Incident
 import com.alisemiz.akilli_kampus_uygulamasi.databinding.ItemIncidentBinding
+import com.bumptech.glide.Glide
 import java.text.SimpleDateFormat
 import java.util.Locale
-import com.bumptech.glide.Glide
 
-// GÜNCELLEME: onLongClick (Uzun basma) parametresi eklendi
 class IncidentAdapter(
     private var incidentList: List<Incident>,
     private val onClick: (String) -> Unit,       // Normal Tıklama (Detay)
@@ -25,47 +27,59 @@ class IncidentAdapter(
 
     override fun onBindViewHolder(holder: IncidentViewHolder, position: Int) {
         val incident = incidentList[position]
+        val context = holder.itemView.context
 
+        // 1. Temel Metin Bilgileri
         holder.binding.tvTitle.text = incident.title
-        holder.binding.tvDescription.text = incident.description
+        holder.binding.tvType.text = incident.type
         holder.binding.tvStatus.text = incident.status
 
-        if (incident.imageUrl.isNotEmpty()) {
-            holder.binding.imgIncidentPhoto.visibility = android.view.View.VISIBLE
-            Glide.with(holder.itemView.context)
+        // 2. Tarih Formatlama
+        val sdf = SimpleDateFormat("dd MMM HH:mm", Locale("tr"))
+        val dateString = incident.timestamp?.toDate()?.let { sdf.format(it) } ?: ""
+        holder.binding.tvDate.text = " • $dateString"
+
+        // 3. Durum Rozeti (Badge) Renklendirme
+        val backgroundDrawable = holder.binding.tvStatus.background as? GradientDrawable
+
+        val colorCode = when (incident.status) {
+            "Açık" -> "#D32F2F"        // Kırmızı
+            "Çözüldü" -> "#388E3C"     // Yeşil
+            "İnceleniyor" -> "#F57C00" // Turuncu
+            "ACİL" -> "#B71C1C"        // Koyu Kırmızı
+            else -> "#757575"          // Gri
+        }
+
+        backgroundDrawable?.setColor(Color.parseColor(colorCode))
+
+        // 4. Görsel Yükleme (Glide ile)
+        if (!incident.imageUrl.isNullOrEmpty()) {
+            Glide.with(context)
                 .load(incident.imageUrl)
                 .centerCrop()
-                .placeholder(android.R.drawable.ic_menu_gallery)
-                .into(holder.binding.imgIncidentPhoto)
+                // DÜZELTME BURADA: android.R.drawable kullandık
+                .placeholder(android.R.drawable.ic_menu_camera)
+                .error(android.R.drawable.ic_menu_camera)
+                .into(holder.binding.ivIncidentIcon)
         } else {
-            holder.binding.imgIncidentPhoto.visibility = android.view.View.GONE
+            // DÜZELTME BURADA: Resim yoksa yine sistem ikonunu kullan
+            holder.binding.ivIncidentIcon.setImageResource(android.R.drawable.ic_menu_camera)
         }
 
-        if (incident.timestamp != null) {
-            val date = incident.timestamp!!.toDate()
-            val format = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale("tr", "TR"))
-            holder.binding.tvDate.text = format.format(date)
-        }
-
-        val iconRes = when (incident.type) {
-            "Yangın" -> android.R.drawable.ic_dialog_alert
-            "Sağlık" -> android.R.drawable.ic_menu_add
-            "Güvenlik" -> android.R.drawable.ic_lock_lock
-            "Teknik" -> android.R.drawable.ic_menu_manage
-            else -> android.R.drawable.ic_dialog_info
-        }
-
-        holder.binding.imgIcon.setImageResource(iconRes)
-
-        // Normal Tıklama -> Detaya Git
+        // 5. Tıklama Olayları
         holder.itemView.setOnClickListener {
-            onClick(incident.id)
+            if (incident.id.isNotEmpty()) {
+                onClick(incident.id)
+            }
         }
 
-        // YENİ: Uzun Basma -> Silme İşlemini Tetikle
         holder.itemView.setOnLongClickListener {
-            onLongClick(incident.id)
-            true // true dönersek "tıklama" olayını iptal eder, sadece uzun basmayı çalıştırır
+            if (incident.id.isNotEmpty()) {
+                onLongClick(incident.id)
+                true
+            } else {
+                false
+            }
         }
     }
 

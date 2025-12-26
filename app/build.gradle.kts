@@ -63,4 +63,6 @@ dependencies {
 
     //Glide Resim Kütüphanesi
     implementation("com.github.bumptech.glide:glide:4.16.0")
+
+
 }
