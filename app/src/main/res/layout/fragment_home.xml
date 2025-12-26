@@ -1,43 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?android:attr/colorBackground">  <androidx.appcompat.widget.SearchView
-    android:id="@+id/searchView"
-    android:layout_width="0dp"
-    android:layout_height="wrap_content"
-    android:layout_margin="16dp"
-    android:background="@drawable/bg_edittext_detail"
-    app:iconifiedByDefault="false"
-    app:queryHint="Olay ara..."
-    app:layout_constraintEnd_toStartOf="@id/btnFilter"
-    app:layout_constraintStart_toStartOf="parent"
-    app:layout_constraintTop_toTopOf="parent" />
+    android:background="?android:attr/colorBackground">
+
+    <androidx.appcompat.widget.SearchView
+        android:id="@+id/searchView"
+        android:layout_width="0dp"
+        android:layout_height="50dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="12dp"
+        android:background="@drawable/bg_edittext_detail"
+        app:iconifiedByDefault="false"
+        app:queryHint="Olay ara..."
+        app:queryBackground="@null"
+        app:submitBackground="@null"
+        app:layout_constraintEnd_toStartOf="@+id/btnFilter"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <ImageButton
         android:id="@+id/btnFilter"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
         android:layout_marginEnd="16dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
+        android:background="@drawable/bg_edittext_detail"
         android:src="@android:drawable/ic_menu_sort_by_size"
         app:tint="?attr/colorOnSurface"
-        app:layout_constraintBottom_toBottomOf="@id/searchView"
+        android:padding="12dp"
+        android:scaleType="fitCenter"
+        app:layout_constraintBottom_toBottomOf="@+id/searchView"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@id/searchView" />
+        app:layout_constraintTop_toTopOf="@+id/searchView" />
 
     <androidx.cardview.widget.CardView
         android:id="@+id/cardEmergencyBanner"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
         android:layout_marginHorizontal="16dp"
-        android:layout_marginTop="8dp"
         android:visibility="gone"
         app:cardBackgroundColor="#FFEBEE"
         app:cardCornerRadius="12dp"
         app:cardElevation="4dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/searchView"
         tools:visibility="visible">
 
@@ -45,12 +56,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:padding="16dp"
+            android:padding="12dp"
             android:gravity="center_vertical">
 
             <ImageView
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
                 android:src="@android:drawable/stat_sys_warning"
                 app:tint="#D32F2F" />
 
@@ -67,15 +78,15 @@
                     android:text="⚠️ ACİL DURUM"
                     android:textStyle="bold"
                     android:textColor="#D32F2F"
-                    android:textSize="16sp"/>
+                    android:textSize="14sp"/>
 
                 <TextView
                     android:id="@+id/tvEmergencyText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Kampüs tahliye ediliyor. Toplanma alanına gidin."
+                    android:text="Kampüs tahliye ediliyor."
                     android:textColor="#B71C1C"
-                    android:textSize="14sp"
+                    android:textSize="13sp"
                     android:layout_marginTop="2dp"/>
             </LinearLayout>
         </LinearLayout>
@@ -83,12 +94,15 @@
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvIncidents"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginTop="8dp"
         android:clipToPadding="false"
-        android:paddingBottom="80dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="100dp"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/cardEmergencyBanner" />
 
     <LinearLayout
@@ -113,7 +127,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Olay Bulunamadı"
+            android:text="Kayıt Bulunamadı"
             android:textColor="?attr/colorOnSurface"
             android:textSize="18sp"
             android:textStyle="bold"
@@ -122,7 +136,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Şu an gösterilecek bir kayıt yok."
+            android:text="Şu an listelenecek bir olay yok."
             android:textColor="#9E9E9E"
             android:textSize="14sp"
             android:layout_marginTop="4dp"/>
@@ -145,7 +159,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="16dp"
-        android:layout_marginBottom="80dp"
+        android:layout_marginBottom="24dp"
         android:src="@android:drawable/ic_input_add"
         app:backgroundTint="?attr/colorPrimary"
         app:tint="?attr/colorOnPrimary"
@@ -157,7 +171,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-        android:layout_marginBottom="80dp"
+        android:layout_marginBottom="24dp"
         android:src="@android:drawable/stat_sys_warning"
         app:backgroundTint="#FFFFFF"
         app:tint="#D32F2F"
