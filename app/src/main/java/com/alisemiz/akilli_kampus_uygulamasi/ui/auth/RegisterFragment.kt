@@ -8,7 +8,6 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.alisemiz.akilli_kampus_uygulamasi.R
-import com.alisemiz.akilli_kampus_uygulamasi.data.model.User
 import com.alisemiz.akilli_kampus_uygulamasi.databinding.FragmentRegisterBinding
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -44,7 +43,7 @@ class RegisterFragment : Fragment() {
         binding.btnRegister.setOnClickListener {
             // 1. Verileri al
             val name = binding.etRegisterName.text.toString().trim()
-            val department = binding.etRegisterDepartment.text.toString().trim()
+            val department = binding.etRegisterDepartment.text.toString().trim() // Bu veri "unit" olacak
             val email = binding.etRegisterEmail.text.toString().trim()
             val password = binding.etRegisterPassword.text.toString().trim()
 
@@ -68,30 +67,22 @@ class RegisterFragment : Fragment() {
                     val userId = task.user!!.uid
 
                     // ROL MANTIĞI
-                    // varsayılan rol "user".
-                    // Ancak testi kolaylaştırmak için email içinde "admin" geçiyorsa admin yapıyoruz.
-                    // Örn: admin@okul.com -> Admin olur. ali@okul.com -> User olur.
-                    val userRole = if (email.contains("admin")) {
-                        "admin"
-                    } else {
-                        "user"
-                    }
+                    val userRole = if (email.contains("admin")) "admin" else "user"
 
-                    // User nesnesini hazırla
-                    val newUser = User(
-                        uid = userId,
-                        name = name,
-                        email = email,
-                        department = department,
-                        role = userRole
+                    // 4. Firestore Veritabanına Kaydet (HASHMAP KULLANIYORUZ)
+                    // DİKKAT: Profil sayfasının okuyabilmesi için "department" verisini "unit" anahtarı ile kaydediyoruz.
+                    val userMap = hashMapOf(
+                        "uid" to userId,
+                        "name" to name,
+                        "email" to email,
+                        "unit" to department, // <-- İŞTE BURASI DÜZELTİLDİ. Artık "Birim Yok" yazmayacak.
+                        "role" to userRole
                     )
 
-                    // 4. Firestore Veritabanına Kaydet
-                    firestore.collection("users").document(userId).set(newUser)
+                    firestore.collection("users").document(userId).set(userMap)
                         .addOnSuccessListener {
-                            Toast.makeText(context, "Kayıt Başarılı! Rol: $userRole", Toast.LENGTH_LONG).show()
-
-                            // Başarılı olunca Giriş ekranına at (Auto-login yapmadık, giriş yapsın istiyoruz)
+                            Toast.makeText(context, "Kayıt Başarılı!", Toast.LENGTH_LONG).show()
+                            // Başarılı olunca Giriş ekranına yönlendir
                             findNavController().navigate(R.id.action_registerFragment_to_loginFragment)
                         }
                         .addOnFailureListener { e ->
