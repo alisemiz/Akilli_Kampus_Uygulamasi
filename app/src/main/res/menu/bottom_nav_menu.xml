@@ -7,14 +7,14 @@
         android:title="Olaylar" />
 
     <item
-        android:id="@+id/notificationsFragment"
-        android:icon="@android:drawable/ic_popup_reminder"
-        android:title="Takip" />
-
-    <item
         android:id="@+id/mapFragment"
         android:icon="@android:drawable/ic_dialog_map"
         android:title="Harita" />
+
+    <item
+        android:id="@+id/notificationsFragment"
+        android:icon="@android:drawable/ic_menu_my_calendar"
+        android:title="Takip" />
 
     <item
         android:id="@+id/profileFragment"

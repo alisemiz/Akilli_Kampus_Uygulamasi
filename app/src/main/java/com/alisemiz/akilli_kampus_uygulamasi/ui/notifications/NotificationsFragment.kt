@@ -20,6 +20,7 @@ class NotificationsFragment : Fragment() {
 
     private var _binding: FragmentNotificationsBinding? = null
     private val binding get() = _binding!!
+
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
     private lateinit var adapter: IncidentAdapter
@@ -40,14 +41,16 @@ class NotificationsFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
+        // Burada da aynı Adapter'ı kullanıyoruz
         adapter = IncidentAdapter(
             listOf(),
-            onClick = { selectedId ->
-                val bundle = Bundle().apply { putString("incidentId", selectedId) }
-                findNavController().navigate(R.id.incidentDetailFragment, bundle)
+            onClick = { id ->
+                val bundle = Bundle().apply { putString("incidentId", id) }
+                findNavController().navigate(R.id.action_notificationsFragment_to_incidentDetailFragment, bundle)
             },
             onLongClick = {
-                // Bildirim ekranında uzun basma işlemi devre dışı
+                // Takip listesinde uzun basınca bir şey yapmasın veya silme sorusu sorsun
+                // Şimdilik boş bırakıyoruz
             }
         )
         binding.rvNotifications.layoutManager = LinearLayoutManager(context)
@@ -55,45 +58,35 @@ class NotificationsFragment : Fragment() {
     }
 
     private fun takipEdilenleriGetir() {
-        val uid = auth.currentUser?.uid
-        if (uid == null) {
-            // Binding kontrolü burada da önemli
-            if (_binding != null) {
-                binding.tvEmptyState.visibility = View.VISIBLE
-            }
-            return
-        }
+        val uid = auth.currentUser?.uid ?: return
 
+        // SORGUNUN MANTIĞI: 'followers' dizisi içinde 'uid' olanları getir
         db.collection("incidents")
             .whereArrayContains("followers", uid)
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .addSnapshotListener { value, error ->
-
-                // --- ÇÖKMEYİ ENGELLEYEN KRİTİK KONTROL ---
-                // Eğer fragment ekrandan ayrılmışsa veya binding yok edilmişse işlemi durdur
-                if (_binding == null || !isAdded) return@addSnapshotListener
+                if (_binding == null) return@addSnapshotListener
 
                 if (error != null) {
                     Toast.makeText(context, "Hata: ${error.message}", Toast.LENGTH_SHORT).show()
                     return@addSnapshotListener
                 }
 
-                val list = mutableListOf<Incident>()
+                val liste = mutableListOf<Incident>()
                 value?.documents?.forEach { doc ->
-                    doc.toObject(Incident::class.java)?.let {
-                        list.add(it.copy(id = doc.id))
-                    }
+                    val incident = doc.toObject(Incident::class.java)?.copy(id = doc.id)
+                    if (incident != null) liste.add(incident)
                 }
 
-                adapter.updateList(list)
+                adapter.updateList(liste)
 
-                // Liste boşsa uyarı göster
-                if (list.isEmpty()) {
-                    binding.tvEmptyState.visibility = View.VISIBLE
+                // Boşluk Kontrolü
+                if (liste.isEmpty()) {
                     binding.rvNotifications.visibility = View.GONE
+                    binding.layoutEmptyState.visibility = View.VISIBLE
                 } else {
-                    binding.tvEmptyState.visibility = View.GONE
                     binding.rvNotifications.visibility = View.VISIBLE
+                    binding.layoutEmptyState.visibility = View.GONE
                 }
             }
     }

@@ -1,6 +1,5 @@
 package com.alisemiz.akilli_kampus_uygulamasi.ui.profile
 
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -10,10 +9,10 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.alisemiz.akilli_kampus_uygulamasi.MainActivity
 import com.alisemiz.akilli_kampus_uygulamasi.R
 import com.alisemiz.akilli_kampus_uygulamasi.data.model.Incident
 import com.alisemiz.akilli_kampus_uygulamasi.databinding.FragmentProfileBinding
+import com.alisemiz.akilli_kampus_uygulamasi.ui.home.IncidentAdapter
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -25,9 +24,7 @@ class ProfileFragment : Fragment() {
 
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseFirestore.getInstance()
-
-    // DİKKAT: Artık NotificationAdapter kullanıyoruz
-    private lateinit var adapter: NotificationAdapter
+    private lateinit var adapter: IncidentAdapter
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -40,115 +37,81 @@ class ProfileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Başlangıçta gizle
-        binding.tvFollowHeader.visibility = View.GONE
-        binding.rvFollowedIncidents.visibility = View.GONE
-        binding.tvEmptyState.visibility = View.GONE
+        kullaniciBilgileriniGetir()
+        setupRecyclerView()
+        takipEdilenleriGetir()
 
-        setupProfileAndRole()
-        setupNotificationSettings()
-
+        // ÇIKIŞ YAPMA İŞLEMİ (DÜZELTİLEN KISIM)
         binding.btnLogout.setOnClickListener {
+            // 1. Firebase'den çıkış yap
             auth.signOut()
-            val intent = Intent(requireContext(), MainActivity::class.java)
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+
+            // 2. Uygulamayı/Aktiviteyi yeniden başlat
+            // Bu işlem uygulamayı kapatıp açmış gibi yapar, böylece LoginFragment'a döner.
+            val intent = requireActivity().intent
+            requireActivity().finish()
             startActivity(intent)
         }
     }
 
-    private fun setupProfileAndRole() {
-        val currentUser = auth.currentUser
-        val email = currentUser?.email ?: "Misafir"
-        binding.tvUserEmail.text = email
-
-        if (currentUser != null) {
-            db.collection("users").document(currentUser.uid).get()
-                .addOnSuccessListener { document ->
-                    if (document.exists()) {
-                        val role = document.getString("role") ?: "user"
-
-                        if (role == "admin") {
-                            // Admin Görünümü
-                            binding.tvUserRole.text = "Rol: YÖNETİCİ (ADMIN)"
-                            binding.tvUnitInfo.text = "Birim: Rektörlük / Güvenlik Merkezi"
-
-                            // Admin için liste GİZLİ
-                            binding.tvFollowHeader.visibility = View.GONE
-                            binding.rvFollowedIncidents.visibility = View.GONE
-                        } else {
-                            // Kullanıcı Görünümü
-                            binding.tvUserRole.text = "Rol: ÖĞRENCİ / PERSONEL"
-                            binding.tvUnitInfo.text = "Birim: Mühendislik Fakültesi"
-
-                            // Başlığı değiştiriyoruz: "Son Bildirimler"
-                            binding.tvFollowHeader.text = "Son Bildirimler"
-                            binding.tvFollowHeader.visibility = View.VISIBLE
-                            binding.rvFollowedIncidents.visibility = View.VISIBLE
-
-                            setupNotificationList()
-                        }
-                    }
-                }
-        }
-    }
-
-    private fun setupNotificationSettings() {
-        val sharedPref = requireActivity().getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
-        val editor = sharedPref.edit()
-
-        binding.switchStatusUpdates.isChecked = sharedPref.getBoolean("notify_status", true)
-        binding.switchEmergency.isChecked = sharedPref.getBoolean("notify_emergency", true)
-
-        binding.switchStatusUpdates.setOnCheckedChangeListener { _, isChecked ->
-            editor.putBoolean("notify_status", isChecked).apply()
-            editor.putBoolean("notifications_enabled", isChecked).apply()
-            Toast.makeText(context, "Durum bildirimleri ${if(isChecked) "Açıldı" else "Kapatıldı"}", Toast.LENGTH_SHORT).show()
-        }
-
-        binding.switchEmergency.setOnCheckedChangeListener { _, isChecked ->
-            editor.putBoolean("notify_emergency", isChecked).apply()
-            Toast.makeText(context, "Acil durum bildirimleri ${if(isChecked) "Açıldı" else "Kapatıldı"}", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun setupNotificationList() {
+    private fun kullaniciBilgileriniGetir() {
         val uid = auth.currentUser?.uid ?: return
 
-        // Yeni Adapter'ı bağlıyoruz
-        adapter = NotificationAdapter(
-            listOf(),
-            onClick = { selectedId ->
-                // Tıklayınca yine detaya gitsin
-                val bundle = Bundle().apply { putString("incidentId", selectedId) }
-                findNavController().navigate(R.id.incidentDetailFragment, bundle)
+        db.collection("users").document(uid).get()
+            .addOnSuccessListener { document ->
+                if (_binding != null && document.exists()) {
+                    val email = document.getString("email")
+                    val role = document.getString("role") ?: "Kullanıcı"
+                    val unit = document.getString("unit") ?: "Birim Yok"
+
+                    binding.tvUserEmail.text = email
+                    binding.tvUserRole.text = role.uppercase()
+                    binding.tvUnitInfo.text = unit
+                }
             }
+    }
+
+    private fun setupRecyclerView() {
+        adapter = IncidentAdapter(
+            listOf(),
+            onClick = { id ->
+                val bundle = Bundle().apply { putString("incidentId", id) }
+                // Navigasyon hatası olursa uygulama çökmesin diye try-catch
+                try {
+                    findNavController().navigate(R.id.incidentDetailFragment, bundle)
+                } catch (e: Exception) {
+                    // Eğer global action yoksa hata verebilir, ama genelde ID ile çalışır
+                }
+            },
+            onLongClick = {}
         )
         binding.rvFollowedIncidents.layoutManager = LinearLayoutManager(context)
         binding.rvFollowedIncidents.adapter = adapter
+    }
 
-        // Takip ettiğim olayları çek
+    private fun takipEdilenleriGetir() {
+        val uid = auth.currentUser?.uid ?: return
+
         db.collection("incidents")
             .whereArrayContains("followers", uid)
             .orderBy("timestamp", Query.Direction.DESCENDING)
+            .limit(5)
             .addSnapshotListener { value, error ->
-                if (error != null) return@addSnapshotListener
+                if (_binding == null) return@addSnapshotListener
 
-                val list = mutableListOf<Incident>()
-                value?.documents?.forEach { doc ->
-                    doc.toObject(Incident::class.java)?.let {
-                        list.add(it.copy(id = doc.id))
+                if (value != null && !value.isEmpty) {
+                    val liste = mutableListOf<Incident>()
+                    value.documents.forEach { doc ->
+                        val incident = doc.toObject(Incident::class.java)?.copy(id = doc.id)
+                        if (incident != null) liste.add(incident)
                     }
-                }
+                    adapter.updateList(liste)
 
-                adapter.updateList(list)
-
-                if (list.isEmpty()) {
-                    binding.tvEmptyState.text = "Henüz bir bildirim yok."
-                    binding.tvEmptyState.visibility = View.VISIBLE
-                    binding.rvFollowedIncidents.visibility = View.GONE
-                } else {
-                    binding.tvEmptyState.visibility = View.GONE
                     binding.rvFollowedIncidents.visibility = View.VISIBLE
+                    binding.tvEmptyState.visibility = View.GONE
+                } else {
+                    binding.rvFollowedIncidents.visibility = View.GONE
+                    binding.tvEmptyState.visibility = View.VISIBLE
                 }
             }
     }
