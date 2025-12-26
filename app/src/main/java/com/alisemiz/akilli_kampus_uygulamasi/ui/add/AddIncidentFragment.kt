@@ -194,7 +194,7 @@ class AddIncidentFragment : Fragment() {
             "title" to title,
             "description" to desc,
             "type" to category,
-            "status" to "İnceleniyor",
+            "status" to "Beklemede",
             "timestamp" to Timestamp(Date()),
             "userId" to auth.currentUser!!.uid,
             "imageUrl" to imageUrl,

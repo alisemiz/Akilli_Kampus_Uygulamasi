@@ -44,7 +44,7 @@ class IncidentDetailFragment : Fragment() {
 
         if (incidentId != null) {
             olayDetaylariniGetir(incidentId!!)
-            // Admin kontrolünü başlat
+            // Admin butonunu sadece admin görür
             adminYetkisiniKontrolEt()
         } else {
             Toast.makeText(context, "Hata: Olay ID bulunamadı!", Toast.LENGTH_SHORT).show()
@@ -57,9 +57,13 @@ class IncidentDetailFragment : Fragment() {
             if (incidentId != null) takipDurumunuDegistir()
         }
 
-        // Admin Butonu Tıklaması
         binding.btnUpdateStatus.setOnClickListener {
             durumDegistirmeDialoguGoster()
+        }
+
+        // YENİ: SİLME BUTONU TIKLAMASI
+        binding.btnDelete.setOnClickListener {
+            silmeOnayiGoster()
         }
     }
 
@@ -70,38 +74,9 @@ class IncidentDetailFragment : Fragment() {
                 if (_binding != null && document.exists()) {
                     val role = document.getString("role")
                     if (role == "admin") {
-                        // Admin ise butonu göster
                         binding.btnUpdateStatus.visibility = View.VISIBLE
                     }
                 }
-            }
-    }
-
-    private fun durumDegistirmeDialoguGoster() {
-        val secenekler = arrayOf("İnceleniyor", "Çözüldü", "Beklemede", "ACİL")
-
-        AlertDialog.Builder(requireContext())
-            .setTitle("Olay Durumunu Güncelle")
-            .setItems(secenekler) { _, which ->
-                val yeniDurum = secenekler[which]
-                yeniDurumuKaydet(yeniDurum)
-            }
-            .show()
-    }
-
-    private fun yeniDurumuKaydet(yeniDurum: String) {
-        if (incidentId == null) return
-
-        db.collection("incidents").document(incidentId!!)
-            .update("status", yeniDurum)
-            .addOnSuccessListener {
-                if (_binding != null) {
-                    Toast.makeText(context, "Durum güncellendi: $yeniDurum", Toast.LENGTH_SHORT).show()
-                    binding.tvDetailStatus.text = yeniDurum // Ekranda anlık güncelle
-                }
-            }
-            .addOnFailureListener {
-                Toast.makeText(context, "Hata: ${it.message}", Toast.LENGTH_SHORT).show()
             }
     }
 
@@ -119,6 +94,7 @@ class IncidentDetailFragment : Fragment() {
                     val status = document.getString("status") ?: ""
                     val timestamp = document.getTimestamp("timestamp")
                     val imageUrl = document.getString("imageUrl")
+                    val ownerId = document.getString("userId") ?: "" // Olayın sahibi
                     val followers = document.get("followers") as? List<String> ?: emptyList()
 
                     binding.tvDetailTitle.text = title
@@ -141,38 +117,92 @@ class IncidentDetailFragment : Fragment() {
                         binding.ivDetailImage.setImageResource(android.R.drawable.ic_menu_camera)
                     }
 
+                    // --- SİLME BUTONU MANTIĞI ---
+                    // Kural: Olayın sahibi BENİM -VE- Durumu "Beklemede" ise silebilirim.
+                    // "İnceleniyor", "Çözüldü" veya "ACİL" durumlarında buton görünmez.
+                    if (ownerId == uid && status == "Beklemede") {
+                        binding.btnDelete.visibility = View.VISIBLE
+                    } else {
+                        binding.btnDelete.visibility = View.GONE
+                    }
+
                     isFollowing = followers.contains(uid)
                     butonTasariminiGuncelle()
                 }
             }
     }
 
+    private fun silmeOnayiGoster() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Olayı Sil")
+            .setMessage("Bu bildirimi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.")
+            .setPositiveButton("EVET, SİL") { _, _ ->
+                incidentId?.let { id ->
+                    db.collection("incidents").document(id).delete()
+                        .addOnSuccessListener {
+                            Toast.makeText(context, "Olay silindi.", Toast.LENGTH_SHORT).show()
+                            findNavController().popBackStack() // Listeye geri dön
+                        }
+                        .addOnFailureListener {
+                            Toast.makeText(context, "Silinemedi: ${it.message}", Toast.LENGTH_SHORT).show()
+                        }
+                }
+            }
+            .setNegativeButton("İptal", null)
+            .show()
+    }
+
+    private fun durumDegistirmeDialoguGoster() {
+        // Durum seçeneklerini güncelledik
+        val secenekler = arrayOf("Beklemede", "İnceleniyor", "Çözüldü", "ACİL")
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Olay Durumunu Güncelle")
+            .setItems(secenekler) { _, which ->
+                val yeniDurum = secenekler[which]
+                yeniDurumuKaydet(yeniDurum)
+            }
+            .show()
+    }
+
+    private fun yeniDurumuKaydet(yeniDurum: String) {
+        if (incidentId == null) return
+
+        db.collection("incidents").document(incidentId!!)
+            .update("status", yeniDurum)
+            .addOnSuccessListener {
+                if (_binding != null) {
+                    Toast.makeText(context, "Durum güncellendi: $yeniDurum", Toast.LENGTH_SHORT).show()
+                    binding.tvDetailStatus.text = yeniDurum
+
+                    // Durum değiştiği için sayfayı yenilemeye gerek yok, ama
+                    // eğer Admin "Beklemede" dışındaki bir şeye çevirdiyse
+                    // silme butonunu anlık olarak gizleyelim (Kendi olayı olsa bile).
+                    if (yeniDurum != "Beklemede") {
+                        binding.btnDelete.visibility = View.GONE
+                    }
+                }
+            }
+            .addOnFailureListener {
+                Toast.makeText(context, "Hata: ${it.message}", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    // ... (takipDurumunuDegistir ve butonTasariminiGuncelle fonksiyonları aynı kalacak) ...
     private fun takipDurumunuDegistir() {
         val uid = auth.currentUser?.uid ?: return
         val ref = db.collection("incidents").document(incidentId!!)
-
         binding.btnFollow.isEnabled = false
-
         if (isFollowing) {
-            ref.update("followers", FieldValue.arrayRemove(uid))
-                .addOnSuccessListener {
-                    isFollowing = false
-                    if (_binding != null) {
-                        butonTasariminiGuncelle()
-                        Toast.makeText(context, "Takip bırakıldı.", Toast.LENGTH_SHORT).show()
-                        binding.btnFollow.isEnabled = true
-                    }
-                }
+            ref.update("followers", FieldValue.arrayRemove(uid)).addOnSuccessListener {
+                isFollowing = false
+                if(_binding!=null) { butonTasariminiGuncelle(); binding.btnFollow.isEnabled = true }
+            }
         } else {
-            ref.update("followers", FieldValue.arrayUnion(uid))
-                .addOnSuccessListener {
-                    isFollowing = true
-                    if (_binding != null) {
-                        butonTasariminiGuncelle()
-                        Toast.makeText(context, "Bildirimler açıldı.", Toast.LENGTH_SHORT).show()
-                        binding.btnFollow.isEnabled = true
-                    }
-                }
+            ref.update("followers", FieldValue.arrayUnion(uid)).addOnSuccessListener {
+                isFollowing = true
+                if(_binding!=null) { butonTasariminiGuncelle(); binding.btnFollow.isEnabled = true }
+            }
         }
     }
 

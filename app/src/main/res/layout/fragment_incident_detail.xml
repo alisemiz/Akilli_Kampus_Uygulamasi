@@ -35,6 +35,20 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
+        <ImageButton
+            android:id="@+id/btnDelete"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_margin="16dp"
+            android:background="@drawable/bg_status_badge"
+            android:backgroundTint="#D32F2F"
+            android:src="@android:drawable/ic_menu_delete"
+            app:tint="#FFFFFF"
+            android:padding="12dp"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -151,6 +165,7 @@
                     app:iconGravity="textStart"
                     app:backgroundTint="#FF9800"
                     app:cornerRadius="8dp"/>
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnFollow"
                     android:layout_width="match_parent"
