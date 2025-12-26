@@ -45,24 +45,25 @@ class HomeFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Güvenlik kontrolü: Kullanıcı giriş yapmamışsa atmasın, Login'e yollasın
         if (auth.currentUser == null) {
-            // Buraya LoginFragment'a yönlendirme kodu gelebilir
             return
         }
 
         setupRecyclerView()
         setupSearchView()
 
-        // Hata korumalı veri çekme fonksiyonu
         verileriGuvenliGetir()
-
         checkUserRoleFromFirestore()
 
-        binding.btnOpenMap.setOnClickListener { findNavController().navigate(R.id.mapFragment) }
+        // SİLİNEN KISIM: binding.btnOpenMap.setOnClickListener... (Artık yok)
+
+        // Yeni Olay Ekleme Butonu (+)
         binding.btnAddIncident.setOnClickListener { findNavController().navigate(R.id.addIncidentFragment) }
+
+        // Filtre Butonu
         binding.btnFilter.setOnClickListener { filtreSecimiGoster() }
 
+        // Acil Durum Butonu (Admin için)
         binding.btnEmergency.visibility = View.GONE
         binding.btnEmergency.setOnClickListener { acilDurumYayinla() }
     }
@@ -71,10 +72,8 @@ class HomeFragment : Fragment() {
         try {
             db.collection("incidents").orderBy("timestamp", Query.Direction.DESCENDING)
                 .addSnapshotListener { value, error ->
-                    // 1. Fragment ölmüşse veya binding yoksa dur (Çökme Önleyici)
                     if (_binding == null) return@addSnapshotListener
 
-                    // 2. Firebase Hatası varsa logla ama çökertme
                     if (error != null) {
                         Log.e("HomeFragment", "Veri çekme hatası", error)
                         binding.rvIncidents.visibility = View.GONE
@@ -87,7 +86,6 @@ class HomeFragment : Fragment() {
 
                     value?.documents?.forEach { doc ->
                         try {
-                            // Veriyi güvenli bir şekilde dönüştür
                             val incident = doc.toObject(Incident::class.java)?.copy(id = doc.id)
                             if (incident != null) {
                                 geciciListe.add(incident)
@@ -96,12 +94,10 @@ class HomeFragment : Fragment() {
                                 }
                             }
                         } catch (e: Exception) {
-                            // Tek bir veri bozuksa sadece onu atla, uygulamayı kapatma!
                             Log.e("HomeFragment", "Bozuk veri atlandı: ${doc.id}", e)
                         }
                     }
 
-                    // UI Güncellemeleri
                     tumOlaylar = geciciListe
 
                     if (latestEmergency != null) {
@@ -109,7 +105,10 @@ class HomeFragment : Fragment() {
                         binding.tvEmergencyText.text = latestEmergency!!.description
                         binding.cardEmergencyBanner.setOnClickListener {
                             val bundle = Bundle().apply { putString("incidentId", latestEmergency!!.id) }
-                            findNavController().navigate(R.id.incidentDetailFragment, bundle)
+                            // Navigasyon hatası olmaması için try-catch
+                            try {
+                                findNavController().navigate(R.id.incidentDetailFragment, bundle)
+                            } catch (e: Exception) { }
                         }
                     } else {
                         binding.cardEmergencyBanner.visibility = View.GONE
@@ -121,13 +120,6 @@ class HomeFragment : Fragment() {
             Log.e("HomeFragment", "Genel hata", e)
         }
     }
-
-    // ... (Diğer fonksiyonlar: setupRecyclerView, listeyiGuncelle, vb. AYNI KALACAK) ...
-    // Hepsini tekrar yazıp kalabalık yapmıyorum, sadece `verileriGetirVeAyikla` yerine
-    // yukarıdaki `verileriGuvenliGetir` fonksiyonunu kullanman yeterli.
-
-    // AMA adapter ve diğer fonksiyonları silmediğinden emin ol.
-    // Eğer tüm dosyayı istersen aşağıya ekliyorum:
 
     private fun checkUserRoleFromFirestore() {
         val uid = auth.currentUser?.uid ?: return
@@ -147,8 +139,14 @@ class HomeFragment : Fragment() {
         adapter = IncidentAdapter(
             listOf(),
             onClick = { selectedId ->
-                val bundle = Bundle().apply { putString("incidentId", selectedId) }
-                findNavController().navigate(R.id.incidentDetailFragment, bundle)
+                if (selectedId.isNotEmpty()) {
+                    try {
+                        val bundle = Bundle().apply { putString("incidentId", selectedId) }
+                        findNavController().navigate(R.id.incidentDetailFragment, bundle)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
             },
             onLongClick = { selectedId ->
                 if (isAdmin) silmeOnayiGoster(selectedId)
@@ -220,6 +218,7 @@ class HomeFragment : Fragment() {
         input.hint = "Örn: Kampüs tahliye ediliyor!"
         AlertDialog.Builder(requireContext())
             .setTitle("⚠️ ACİL DURUM YAYINI")
+            .setMessage("Bu mesaj, uygulamayı kullanan HERKESE acil durum bildirimi olarak gönderilecektir.")
             .setView(input)
             .setPositiveButton("YAYINLA") { _, _ ->
                 val mesaj = input.text.toString()
@@ -236,7 +235,9 @@ class HomeFragment : Fragment() {
                         "followers" to emptyList<String>()
                     )
                     db.collection("incidents").add(acilDurum)
-                        .addOnSuccessListener { Toast.makeText(context, "Yayınlandı!", Toast.LENGTH_SHORT).show() }
+                        .addOnSuccessListener {
+                            Toast.makeText(context, "Acil durum herkese bildirildi!", Toast.LENGTH_LONG).show()
+                        }
                 }
             }
             .setNegativeButton("İptal", null)
