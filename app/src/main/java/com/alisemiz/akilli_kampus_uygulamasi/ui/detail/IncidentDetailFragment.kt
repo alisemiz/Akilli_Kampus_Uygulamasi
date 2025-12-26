@@ -1,5 +1,6 @@
 package com.alisemiz.akilli_kampus_uygulamasi.ui.incident_detail
 
+import android.app.AlertDialog
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.os.Bundle
@@ -26,7 +27,7 @@ class IncidentDetailFragment : Fragment() {
     private val auth = FirebaseAuth.getInstance()
 
     private var incidentId: String? = null
-    private var isFollowing = false // Kullanıcı takip ediyor mu?
+    private var isFollowing = false
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -39,25 +40,69 @@ class IncidentDetailFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Argümanlardan ID'yi al
         incidentId = arguments?.getString("incidentId")
 
         if (incidentId != null) {
             olayDetaylariniGetir(incidentId!!)
+            // Admin kontrolünü başlat
+            adminYetkisiniKontrolEt()
         } else {
             Toast.makeText(context, "Hata: Olay ID bulunamadı!", Toast.LENGTH_SHORT).show()
             findNavController().popBackStack()
         }
 
-        // Geri Butonu
         binding.btnBack.setOnClickListener { findNavController().popBackStack() }
 
-        // Takip Et / Bırak Butonu
         binding.btnFollow.setOnClickListener {
-            if (incidentId != null) {
-                takipDurumunuDegistir()
-            }
+            if (incidentId != null) takipDurumunuDegistir()
         }
+
+        // Admin Butonu Tıklaması
+        binding.btnUpdateStatus.setOnClickListener {
+            durumDegistirmeDialoguGoster()
+        }
+    }
+
+    private fun adminYetkisiniKontrolEt() {
+        val uid = auth.currentUser?.uid ?: return
+        db.collection("users").document(uid).get()
+            .addOnSuccessListener { document ->
+                if (_binding != null && document.exists()) {
+                    val role = document.getString("role")
+                    if (role == "admin") {
+                        // Admin ise butonu göster
+                        binding.btnUpdateStatus.visibility = View.VISIBLE
+                    }
+                }
+            }
+    }
+
+    private fun durumDegistirmeDialoguGoster() {
+        val secenekler = arrayOf("İnceleniyor", "Çözüldü", "Beklemede", "ACİL")
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Olay Durumunu Güncelle")
+            .setItems(secenekler) { _, which ->
+                val yeniDurum = secenekler[which]
+                yeniDurumuKaydet(yeniDurum)
+            }
+            .show()
+    }
+
+    private fun yeniDurumuKaydet(yeniDurum: String) {
+        if (incidentId == null) return
+
+        db.collection("incidents").document(incidentId!!)
+            .update("status", yeniDurum)
+            .addOnSuccessListener {
+                if (_binding != null) {
+                    Toast.makeText(context, "Durum güncellendi: $yeniDurum", Toast.LENGTH_SHORT).show()
+                    binding.tvDetailStatus.text = yeniDurum // Ekranda anlık güncelle
+                }
+            }
+            .addOnFailureListener {
+                Toast.makeText(context, "Hata: ${it.message}", Toast.LENGTH_SHORT).show()
+            }
     }
 
     private fun olayDetaylariniGetir(id: String) {
@@ -65,34 +110,27 @@ class IncidentDetailFragment : Fragment() {
 
         db.collection("incidents").document(id).get()
             .addOnSuccessListener { document ->
-                // Fragment kapanmışsa işlemi durdur (NullPointer önleyici)
                 if (_binding == null) return@addOnSuccessListener
 
                 if (document.exists()) {
-                    // 1. Verileri Ekrana Yerleştir
                     val title = document.getString("title") ?: ""
                     val description = document.getString("description") ?: ""
                     val type = document.getString("type") ?: ""
                     val status = document.getString("status") ?: ""
                     val timestamp = document.getTimestamp("timestamp")
                     val imageUrl = document.getString("imageUrl")
-
-                    // Takipçi Listesini Al
                     val followers = document.get("followers") as? List<String> ?: emptyList()
 
-                    // Yazıları Ata
                     binding.tvDetailTitle.text = title
                     binding.tvDetailDescription.text = description
                     binding.tvDetailType.text = type
                     binding.tvDetailStatus.text = status
 
-                    // Tarih Formatla
                     if (timestamp != null) {
                         val sdf = SimpleDateFormat("dd MMMM yyyy, HH:mm", Locale("tr"))
                         binding.tvDetailDate.text = sdf.format(timestamp.toDate())
                     }
 
-                    // Resim Yükle (Glide)
                     if (!imageUrl.isNullOrEmpty()) {
                         Glide.with(this)
                             .load(imageUrl)
@@ -100,18 +138,11 @@ class IncidentDetailFragment : Fragment() {
                             .placeholder(android.R.drawable.ic_menu_camera)
                             .into(binding.ivDetailImage)
                     } else {
-                        // Resim yoksa varsayılanı göster veya gizle
                         binding.ivDetailImage.setImageResource(android.R.drawable.ic_menu_camera)
                     }
 
-                    // 2. Takip Durumunu Kontrol Et
                     isFollowing = followers.contains(uid)
                     butonTasariminiGuncelle()
-                }
-            }
-            .addOnFailureListener {
-                if (_binding != null) {
-                    Toast.makeText(context, "Veri yüklenemedi: ${it.message}", Toast.LENGTH_SHORT).show()
                 }
             }
     }
@@ -120,11 +151,9 @@ class IncidentDetailFragment : Fragment() {
         val uid = auth.currentUser?.uid ?: return
         val ref = db.collection("incidents").document(incidentId!!)
 
-        // Çift tıklamayı önlemek için butonu kilitle
         binding.btnFollow.isEnabled = false
 
         if (isFollowing) {
-            // TAKİBİ BIRAK (ArrayRemove)
             ref.update("followers", FieldValue.arrayRemove(uid))
                 .addOnSuccessListener {
                     isFollowing = false
@@ -134,11 +163,7 @@ class IncidentDetailFragment : Fragment() {
                         binding.btnFollow.isEnabled = true
                     }
                 }
-                .addOnFailureListener {
-                    if (_binding != null) binding.btnFollow.isEnabled = true
-                }
         } else {
-            // TAKİP ET (ArrayUnion)
             ref.update("followers", FieldValue.arrayUnion(uid))
                 .addOnSuccessListener {
                     isFollowing = true
@@ -148,30 +173,20 @@ class IncidentDetailFragment : Fragment() {
                         binding.btnFollow.isEnabled = true
                     }
                 }
-                .addOnFailureListener {
-                    if (_binding != null) binding.btnFollow.isEnabled = true
-                }
         }
     }
 
     private fun butonTasariminiGuncelle() {
-        // Renk ve İkon Ayarları
         if (isFollowing) {
-            // Takip Ediliyor Modu (Kırmızı tonları - Bırakmak için)
             binding.btnFollow.text = "Takibi Bırak"
-            binding.btnFollow.setBackgroundColor(Color.parseColor("#FFEBEE")) // Açık Kırmızı Arka Plan
-            binding.btnFollow.setTextColor(Color.parseColor("#D32F2F"))       // Koyu Kırmızı Yazı
-
-            // Sistem İkonu: Çarpı/İptal
+            binding.btnFollow.setBackgroundColor(Color.parseColor("#FFEBEE"))
+            binding.btnFollow.setTextColor(Color.parseColor("#D32F2F"))
             binding.btnFollow.setIconResource(android.R.drawable.ic_menu_close_clear_cancel)
             binding.btnFollow.iconTint = ColorStateList.valueOf(Color.parseColor("#D32F2F"))
         } else {
-            // Takip Et Modu (Mavi tonları - Eklemek için)
             binding.btnFollow.text = "Takip Et"
-            binding.btnFollow.setBackgroundColor(Color.parseColor("#E8EAF6")) // Açık Mavi Arka Plan
-            binding.btnFollow.setTextColor(Color.parseColor("#1A237E"))       // Koyu Mavi Yazı
-
-            // Sistem İkonu: Artı/Ekle
+            binding.btnFollow.setBackgroundColor(Color.parseColor("#E8EAF6"))
+            binding.btnFollow.setTextColor(Color.parseColor("#1A237E"))
             binding.btnFollow.setIconResource(android.R.drawable.ic_input_add)
             binding.btnFollow.iconTint = ColorStateList.valueOf(Color.parseColor("#1A237E"))
         }

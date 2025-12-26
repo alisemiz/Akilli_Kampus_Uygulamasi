@@ -57,7 +57,7 @@
                     android:id="@+id/tvDetailTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Olay Başlığı Yükleniyor..."
+                    android:text="Olay Başlığı"
                     android:textSize="22sp"
                     android:textStyle="bold"
                     android:textColor="?attr/colorOnSurface" />
@@ -111,7 +111,7 @@
                     android:id="@+id/tvDetailDescription"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Detaylı açıklama buraya gelecek..."
+                    android:text="Detaylı açıklama..."
                     android:textColor="#666666"
                     android:textSize="15sp"
                     android:lineSpacingExtra="4dp"
@@ -139,10 +139,23 @@
                     android:layout_marginTop="8dp"/>
 
                 <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnUpdateStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:text="Durumu Güncelle (Admin)"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:visibility="gone"
+                    app:icon="@android:drawable/ic_menu_edit"
+                    app:iconGravity="textStart"
+                    app:backgroundTint="#FF9800"
+                    app:cornerRadius="8dp"/>
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnFollow"
                     android:layout_width="match_parent"
                     android:layout_height="56dp"
-                    android:layout_marginTop="32dp"
+                    android:layout_marginTop="12dp"
                     android:text="Takip Et"
                     android:textSize="16sp"
                     android:textStyle="bold"
