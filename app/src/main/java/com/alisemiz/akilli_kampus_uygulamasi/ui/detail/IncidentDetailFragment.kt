@@ -1,160 +1,179 @@
-package com.alisemiz.akilli_kampus_uygulamasi.ui.detail
+package com.alisemiz.akilli_kampus_uygulamasi.ui.incident_detail
 
 import android.content.res.ColorStateList
 import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
-import android.preference.PreferenceManager
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
-import com.alisemiz.akilli_kampus_uygulamasi.R
-import com.alisemiz.akilli_kampus_uygulamasi.data.model.Incident
 import com.alisemiz.akilli_kampus_uygulamasi.databinding.FragmentIncidentDetailBinding
+import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import org.osmdroid.config.Configuration
-import org.osmdroid.util.GeoPoint
-import org.osmdroid.views.overlay.Marker
 import java.text.SimpleDateFormat
 import java.util.Locale
-import com.bumptech.glide.Glide
-
 
 class IncidentDetailFragment : Fragment() {
 
     private var _binding: FragmentIncidentDetailBinding? = null
     private val binding get() = _binding!!
+
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
-    private var incidentId: String? = null
-    private var isFollowing = false
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+    private var incidentId: String? = null
+    private var isFollowing = false // Kullanıcı takip ediyor mu?
+
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
         _binding = FragmentIncidentDetailBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        // Argümanlardan ID'yi al
         incidentId = arguments?.getString("incidentId")
 
         if (incidentId != null) {
-            verileriGetir(incidentId!!)
-            rolKontroluYap()
-            takipDurumunuKontrolEt()
+            olayDetaylariniGetir(incidentId!!)
+        } else {
+            Toast.makeText(context, "Hata: Olay ID bulunamadı!", Toast.LENGTH_SHORT).show()
+            findNavController().popBackStack()
         }
 
+        // Geri Butonu
         binding.btnBack.setOnClickListener { findNavController().popBackStack() }
-        binding.btnAdminSave.setOnClickListener { adminGuncellemeYap() }
-        binding.btnFollow.setOnClickListener { takipIslemiYap() }
+
+        // Takip Et / Bırak Butonu
+        binding.btnFollow.setOnClickListener {
+            if (incidentId != null) {
+                takipDurumunuDegistir()
+            }
+        }
     }
 
-    private fun verileriGetir(id: String) {
+    private fun olayDetaylariniGetir(id: String) {
+        val uid = auth.currentUser?.uid ?: return
+
         db.collection("incidents").document(id).get()
             .addOnSuccessListener { document ->
-                if (document.exists() && isAdded) {
-                    val incident = document.toObject(Incident::class.java)
-                    if (incident != null) {
-                        binding.tvDetailTitle.text = incident.title
-                        binding.etDetailDescription.setText(incident.description)
-                        binding.tvDetailStatus.text = incident.status.uppercase()
+                // Fragment kapanmışsa işlemi durdur (NullPointer önleyici)
+                if (_binding == null) return@addOnSuccessListener
 
-                        //Görseli Glide ile Yükle
-                        if (incident.imageUrl.isNotEmpty()) {
-                            binding.ivDetailImage.visibility = View.VISIBLE
-                            Glide.with(this).load(incident.imageUrl).into(binding.ivDetailImage)
-                        }
+                if (document.exists()) {
+                    // 1. Verileri Ekrana Yerleştir
+                    val title = document.getString("title") ?: ""
+                    val description = document.getString("description") ?: ""
+                    val type = document.getString("type") ?: ""
+                    val status = document.getString("status") ?: ""
+                    val timestamp = document.getTimestamp("timestamp")
+                    val imageUrl = document.getString("imageUrl")
 
-                        //Haritayı Olay Konumuna Odakla
-                        val point = GeoPoint(incident.latitude, incident.longitude)
-                        binding.mapDetail.controller.setZoom(18.0)
-                        binding.mapDetail.controller.setCenter(point)
+                    // Takipçi Listesini Al
+                    val followers = document.get("followers") as? List<String> ?: emptyList()
 
-                        val marker = Marker(binding.mapDetail)
-                        marker.position = point
-                        marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                        binding.mapDetail.overlays.clear()
-                        binding.mapDetail.overlays.add(marker)
-                        binding.mapDetail.invalidate()
+                    // Yazıları Ata
+                    binding.tvDetailTitle.text = title
+                    binding.tvDetailDescription.text = description
+                    binding.tvDetailType.text = type
+                    binding.tvDetailStatus.text = status
 
-                        incident.timestamp?.let {
-                            val format = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale("tr", "TR"))
-                            binding.tvDetailDate.text = format.format(it.toDate())
-                        }
-                        setupSpinner(incident.status)
+                    // Tarih Formatla
+                    if (timestamp != null) {
+                        val sdf = SimpleDateFormat("dd MMMM yyyy, HH:mm", Locale("tr"))
+                        binding.tvDetailDate.text = sdf.format(timestamp.toDate())
+                    }
+
+                    // Resim Yükle (Glide)
+                    if (!imageUrl.isNullOrEmpty()) {
+                        Glide.with(this)
+                            .load(imageUrl)
+                            .centerCrop()
+                            .placeholder(android.R.drawable.ic_menu_camera)
+                            .into(binding.ivDetailImage)
+                    } else {
+                        // Resim yoksa varsayılanı göster veya gizle
+                        binding.ivDetailImage.setImageResource(android.R.drawable.ic_menu_camera)
+                    }
+
+                    // 2. Takip Durumunu Kontrol Et
+                    isFollowing = followers.contains(uid)
+                    butonTasariminiGuncelle()
+                }
+            }
+            .addOnFailureListener {
+                if (_binding != null) {
+                    Toast.makeText(context, "Veri yüklenemedi: ${it.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+    }
+
+    private fun takipDurumunuDegistir() {
+        val uid = auth.currentUser?.uid ?: return
+        val ref = db.collection("incidents").document(incidentId!!)
+
+        // Çift tıklamayı önlemek için butonu kilitle
+        binding.btnFollow.isEnabled = false
+
+        if (isFollowing) {
+            // TAKİBİ BIRAK (ArrayRemove)
+            ref.update("followers", FieldValue.arrayRemove(uid))
+                .addOnSuccessListener {
+                    isFollowing = false
+                    if (_binding != null) {
+                        butonTasariminiGuncelle()
+                        Toast.makeText(context, "Takip bırakıldı.", Toast.LENGTH_SHORT).show()
+                        binding.btnFollow.isEnabled = true
                     }
                 }
-            }
-    }
-
-    private fun rolKontroluYap() {
-        val uid = auth.currentUser?.uid ?: return
-        db.collection("users").document(uid).get().addOnSuccessListener { doc ->
-            if (isAdded && _binding != null) {
-                val role = doc.getString("role")
-                if (role == "admin") {
-                    binding.adminPanel.visibility = View.VISIBLE
-                    binding.btnFollow.visibility = View.GONE
-                    binding.etDetailDescription.isEnabled = true
-                    binding.etDetailDescription.setBackgroundColor(Color.parseColor("#E3F2FD"))
-                } else {
-                    binding.adminPanel.visibility = View.GONE
-                    binding.btnFollow.visibility = View.VISIBLE
+                .addOnFailureListener {
+                    if (_binding != null) binding.btnFollow.isEnabled = true
                 }
-            }
-        }
-    }
-
-    private fun setupSpinner(currentStatus: String) {
-        val statusList = arrayOf("Açık", "İnceleniyor", "Çözüldü")
-        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, statusList)
-        binding.spinnerStatusUpdate.adapter = adapter
-        val index = statusList.indexOfFirst { it.equals(currentStatus, ignoreCase = true) }
-        if (index >= 0) binding.spinnerStatusUpdate.setSelection(index)
-    }
-
-    private fun adminGuncellemeYap() {
-        val yeniDurum = binding.spinnerStatusUpdate.selectedItem.toString()
-        val yeniAciklama = binding.etDetailDescription.text.toString()
-        db.collection("incidents").document(incidentId!!).update(mapOf("status" to yeniDurum, "description" to yeniAciklama))
-            .addOnSuccessListener { Toast.makeText(context, "Olay güncellendi!", Toast.LENGTH_SHORT).show() }
-    }
-
-    private fun takipDurumunuKontrolEt() {
-        val uid = auth.currentUser?.uid ?: return
-        db.collection("incidents").document(incidentId!!).get().addOnSuccessListener { doc ->
-            if (isAdded && _binding != null) {
-                val followers = doc.get("followers") as? List<String> ?: emptyList()
-                isFollowing = followers.contains(uid)
-                guncelleTakipButonu()
-            }
-        }
-    }
-
-    private fun guncelleTakipButonu() {
-        if (isFollowing) {
-            binding.btnFollow.text = "TAKİBİ BIRAK"
-            binding.btnFollow.backgroundTintList = ColorStateList.valueOf(Color.GRAY)
         } else {
-            binding.btnFollow.text = "TAKİP ET"
-            binding.btnFollow.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#4CAF50"))
+            // TAKİP ET (ArrayUnion)
+            ref.update("followers", FieldValue.arrayUnion(uid))
+                .addOnSuccessListener {
+                    isFollowing = true
+                    if (_binding != null) {
+                        butonTasariminiGuncelle()
+                        Toast.makeText(context, "Bildirimler açıldı.", Toast.LENGTH_SHORT).show()
+                        binding.btnFollow.isEnabled = true
+                    }
+                }
+                .addOnFailureListener {
+                    if (_binding != null) binding.btnFollow.isEnabled = true
+                }
         }
     }
 
-    private fun takipIslemiYap() {
-        val uid = auth.currentUser?.uid ?: return
-        val docRef = db.collection("incidents").document(incidentId!!)
-        val action = if (isFollowing) FieldValue.arrayRemove(uid) else FieldValue.arrayUnion(uid)
-        docRef.update("followers", action).addOnSuccessListener {
-            isFollowing = !isFollowing
-            guncelleTakipButonu()
-            Toast.makeText(context, if (isFollowing) "Takip edildi" else "Takip bırakıldı", Toast.LENGTH_SHORT).show()
+    private fun butonTasariminiGuncelle() {
+        // Renk ve İkon Ayarları
+        if (isFollowing) {
+            // Takip Ediliyor Modu (Kırmızı tonları - Bırakmak için)
+            binding.btnFollow.text = "Takibi Bırak"
+            binding.btnFollow.setBackgroundColor(Color.parseColor("#FFEBEE")) // Açık Kırmızı Arka Plan
+            binding.btnFollow.setTextColor(Color.parseColor("#D32F2F"))       // Koyu Kırmızı Yazı
+
+            // Sistem İkonu: Çarpı/İptal
+            binding.btnFollow.setIconResource(android.R.drawable.ic_menu_close_clear_cancel)
+            binding.btnFollow.iconTint = ColorStateList.valueOf(Color.parseColor("#D32F2F"))
+        } else {
+            // Takip Et Modu (Mavi tonları - Eklemek için)
+            binding.btnFollow.text = "Takip Et"
+            binding.btnFollow.setBackgroundColor(Color.parseColor("#E8EAF6")) // Açık Mavi Arka Plan
+            binding.btnFollow.setTextColor(Color.parseColor("#1A237E"))       // Koyu Mavi Yazı
+
+            // Sistem İkonu: Artı/Ekle
+            binding.btnFollow.setIconResource(android.R.drawable.ic_input_add)
+            binding.btnFollow.iconTint = ColorStateList.valueOf(Color.parseColor("#1A237E"))
         }
     }
 

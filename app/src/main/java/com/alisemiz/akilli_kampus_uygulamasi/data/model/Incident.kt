@@ -7,11 +7,11 @@ data class Incident(
     val title: String = "",
     val description: String = "",
     val type: String = "",
-    val status: String = "",
+    val status: String = "Açık",
+    val imageUrl: String? = null,
+    val userId: String = "",
     val latitude: Double = 0.0,
     val longitude: Double = 0.0,
-    val creatorUid: String = "",
     val timestamp: Timestamp? = null,
-    val imageUrl: String = "",
-    val followers: List<String> = emptyList()
+    val followers: List<String> = emptyList() //
 )

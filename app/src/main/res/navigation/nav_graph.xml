@@ -57,7 +57,7 @@
 
     <fragment
         android:id="@+id/incidentDetailFragment"
-        android:name="com.alisemiz.akilli_kampus_uygulamasi.ui.detail.IncidentDetailFragment"
+        android:name="com.alisemiz.akilli_kampus_uygulamasi.ui.incident_detail.IncidentDetailFragment"
         android:label="Olay Detayı"
         tools:layout="@layout/fragment_incident_detail">
         <argument
