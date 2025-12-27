@@ -1,5 +1,6 @@
 package com.alisemiz.akilli_kampus_uygulamasi
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
@@ -9,10 +10,13 @@ import android.os.Bundle
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
 import com.alisemiz.akilli_kampus_uygulamasi.databinding.ActivityMainBinding
@@ -36,14 +40,23 @@ class MainActivity : AppCompatActivity() {
     // Auth Durum Dinleyicisi
     private lateinit var authStateListener: FirebaseAuth.AuthStateListener
 
+    // Bildirim İzni İsteyici (Android 13+ için gerekli)
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (!isGranted) {
+            Toast.makeText(this, "Acil durum bildirimlerini almak için izin vermelisiniz.", Toast.LENGTH_LONG).show()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 1. Önce binding ve tasarımı yükle (Çökme hatasını önlemek için ilk bu yapılmalı)
+        // 1. Tasarımı Yükle
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // 2. Tam ekran kodunu tasarım yüklendikten SONRA çalıştır (Safe Immersive Mode)
+        // 2. Tam Ekran Modu (Safe Immersive Mode)
         window.decorView.post {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 window.insetsController?.let { controller ->
@@ -60,17 +73,21 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Navigasyon ayarları
+        // 3. Bildirim İzni İste (Uygulama açılınca)
+        askNotificationPermission()
+
+        // 4. Navigasyon Ayarları
         val navHostFragment = supportFragmentManager.findFragmentById(R.id.fragmentContainerView) as NavHostFragment
         val navController = navHostFragment.navController
         binding.bottomNavigationView.setupWithNavController(navController)
 
-        // Menü görünürlük ayarları
+        // 5. Menü Görünürlük Ayarları
         navController.addOnDestinationChangedListener { _, destination, _ ->
             when (destination.id) {
                 R.id.homeFragment,
                 R.id.mapFragment,
-                R.id.profileFragment -> {
+                R.id.profileFragment,
+                R.id.notificationsFragment -> { // Takip sekmesi burada
                     binding.bottomNavigationView.visibility = View.VISIBLE
                 }
                 else -> {
@@ -81,6 +98,7 @@ class MainActivity : AppCompatActivity() {
 
         createNotificationChannel()
 
+        // 6. Auth Listener
         authStateListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
             val user = firebaseAuth.currentUser
             if (user != null) {
@@ -89,6 +107,14 @@ class MainActivity : AppCompatActivity() {
             } else {
                 followListener?.remove()
                 emergencyListener?.remove()
+            }
+        }
+    }
+
+    private fun askNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
     }
@@ -107,7 +133,9 @@ class MainActivity : AppCompatActivity() {
         db.collection("users").document(uid).get()
             .addOnSuccessListener { document ->
                 if (document.exists()) {
+                    // Herkes (Admin ve User) takip sekmesini görsün
                     val menu = binding.bottomNavigationView.menu
+                    menu.findItem(R.id.notificationsFragment)?.isVisible = true
                 }
             }
     }
@@ -128,6 +156,7 @@ class MainActivity : AppCompatActivity() {
         followListener?.remove()
         emergencyListener?.remove()
 
+        // 1. Takip Edilen Olaylar
         followListener = db.collection("incidents")
             .whereArrayContains("followers", uid)
             .addSnapshotListener { snapshots, e ->
@@ -141,6 +170,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
+        // 2. Acil Durumlar (Sadece yeniler)
         emergencyListener = db.collection("incidents")
             .whereEqualTo("status", "ACİL")
             .addSnapshotListener { snapshots, e ->
@@ -160,7 +190,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun bildirimGonder(baslik: String, icerik: String) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 return
             }
         }
@@ -169,6 +199,7 @@ class MainActivity : AppCompatActivity() {
             .setSmallIcon(android.R.drawable.stat_sys_warning)
             .setContentTitle(baslik)
             .setContentText(icerik)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(icerik))
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setVibrate(longArrayOf(0, 500, 200, 500))
             .setAutoCancel(true)

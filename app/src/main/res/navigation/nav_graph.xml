@@ -81,5 +81,10 @@
             android:id="@+id/action_profileFragment_to_incidentDetailFragment"
             app:destination="@id/incidentDetailFragment" />
     </fragment>
+    <fragment
+        android:id="@+id/notificationsFragment"
+        android:name="com.alisemiz.akilli_kampus_uygulamasi.ui.notifications.NotificationsFragment"
+        android:label="Bildirimler"
+        tools:layout="@layout/fragment_notifications" />
 
 </navigation>
