@@ -40,7 +40,6 @@ android {
 }
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
@@ -51,6 +50,7 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
     // Firebase Platform
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
     implementation("com.google.firebase:firebase-analytics")
@@ -58,11 +58,12 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("com.google.firebase:firebase-storage-ktx")
 
+    // YENİ: Google Play Services Location (Cihaz konumu için gerekli)
+    implementation("com.google.android.gms:play-services-location:21.0.1")
+
     // OpenStreetMap Kütüphanesi
     implementation("org.osmdroid:osmdroid-android:6.1.16")
 
-    //Glide Resim Kütüphanesi
+    // Glide Resim Kütüphanesi
     implementation("com.github.bumptech.glide:glide:4.16.0")
-
-
 }

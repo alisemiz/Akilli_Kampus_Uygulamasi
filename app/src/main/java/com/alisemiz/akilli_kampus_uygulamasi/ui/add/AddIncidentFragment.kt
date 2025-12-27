@@ -20,10 +20,17 @@ import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.alisemiz.akilli_kampus_uygulamasi.databinding.FragmentAddIncidentBinding
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
 import java.io.File
 import java.io.IOException
 import java.text.SimpleDateFormat
@@ -31,19 +38,33 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 
+/**
+ * Yeni Olay Bildirme Ekranı
+ * Kullanıcı buradan konum, fotoğraf ve detay girerek bildirim oluşturur.
+ */
 class AddIncidentFragment : Fragment() {
 
     private var _binding: FragmentAddIncidentBinding? = null
     private val binding get() = _binding!!
 
-    private var secilenGorselUri: Uri? = null
-    private var photoURI: Uri? = null // Kameradan çekilen fotoğrafın geçici adresi
+    // Harita ve İşaretçi Tanımları
+    private lateinit var map: MapView
+    private var marker: Marker? = null
 
+    // Konum verilerini çekmek için gerekli istemci
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private var currentLat: Double = 39.9048 // Varsayılan: Erzurum Atatürk Üni [cite: 3]
+    private var currentLng: Double = 41.2572
+
+    private var secilenGorselUri: Uri? = null
+    private var photoURI: Uri? = null
+
+    // Firebase Servisleri
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseFirestore.getInstance()
     private val storage = FirebaseStorage.getInstance()
 
-    // 1. Galeri Başlatıcı (Galeriden seçilince burası çalışır)
+    // Galeriden resim seçme işlemi sonucu
     private val galleryLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val data = result.data
@@ -55,7 +76,7 @@ class AddIncidentFragment : Fragment() {
         }
     }
 
-    // 2. Kamera Başlatıcı (Fotoğraf çekilince burası çalışır)
+    // Kamera ile resim çekme işlemi sonucu
     private val cameraLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         if (success && photoURI != null) {
             secilenGorselUri = photoURI
@@ -64,14 +85,15 @@ class AddIncidentFragment : Fragment() {
         }
     }
 
-    // 3. İzin İsteyici
-    private val requestPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        if (isGranted) {
+    // İzinlerin (Kamera ve Konum) toplu kontrolü
+    private val requestPermissionsLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        if (permissions[Manifest.permission.CAMERA] == true) {
             kamerayiAc()
-        } else {
-            Toast.makeText(context, "Fotoğraf çekmek için kamera izni vermelisiniz.", Toast.LENGTH_SHORT).show()
+        }
+        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
+            cihazKonumunuAl()
         }
     }
 
@@ -79,58 +101,106 @@ class AddIncidentFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
+        // osmdroid harita ayarlarını yükle
+        Configuration.getInstance().load(context, android.preference.PreferenceManager.getDefaultSharedPreferences(context))
+
         _binding = FragmentAddIncidentBinding.inflate(inflater, container, false)
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        setupSpinner()
+        // İlk başta haritayı hazırla (Erzurum merkezli)
+        haritayiHazirla()
 
-        // Fotoğraf Ekle Butonu
-        binding.btnAddPhoto.setOnClickListener {
-            resimSecimDialoguGoster()
-        }
+        // Konum iznini kontrol et ve varsa konumu güncelle
+        konumIzniKontrolEt()
 
-        // Gönder Butonu
-        binding.btnSubmit.setOnClickListener {
-            olayiKaydet()
+        // Kategorileri spinner'a yükle
+        kategorileriDoldur()
+
+        // Buton tıklama olayları
+        binding.btnAddPhoto.setOnClickListener { resimSecimDialoguGoster() }
+        binding.btnSubmit.setOnClickListener { olayiKaydet() }
+    }
+
+    private fun haritayiHazirla() {
+        map = binding.mapAdd
+        map.setTileSource(TileSourceFactory.MAPNIK)
+        map.setMultiTouchControls(true)
+
+        val baslangicNoktasi = GeoPoint(currentLat, currentLng)
+        map.controller.setZoom(16.0)
+        map.controller.setCenter(baslangicNoktasi)
+
+        // Harita üzerine konumu gösteren pin ekle
+        marker = Marker(map)
+        marker?.position = baslangicNoktasi
+        marker?.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+        marker?.title = "Olay Konumu"
+        map.overlays.add(marker)
+    }
+
+    private fun konumIzniKontrolEt() {
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
+            == PackageManager.PERMISSION_GRANTED) {
+            cihazKonumunuAl()
+        } else {
+            requestPermissionsLauncher.launch(arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ))
         }
     }
 
-    private fun setupSpinner() {
-        val categories = arrayOf("Güvenlik", "Temizlik", "Teknik", "Sağlık", "Ulaşım", "Diğer")
-        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, categories)
+    private fun cihazKonumunuAl() {
+        try {
+            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                if (location != null) {
+                    currentLat = location.latitude
+                    currentLng = location.longitude
+
+                    // Haritayı kullanıcının gerçek konumuna kaydır ve pini güncelle
+                    val yeniNokta = GeoPoint(currentLat, currentLng)
+                    map.controller.animateTo(yeniNokta)
+                    marker?.position = yeniNokta
+                    map.invalidate()
+                }
+            }
+        } catch (e: SecurityException) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun kategorileriDoldur() {
+        val list = arrayOf("Güvenlik", "Sağlık", "Teknik", "Temizlik", "Kayıp Eşya", "Diğer")
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, list)
         binding.spinnerCategory.adapter = adapter
     }
 
     private fun resimSecimDialoguGoster() {
-        val secenekler = arrayOf("Kamera ile Çek", "Galeriden Seç")
-        val builder = AlertDialog.Builder(requireContext())
-        builder.setTitle("Fotoğraf Ekle")
-        builder.setItems(secenekler) { _, which ->
-            when (which) {
-                0 -> { // Kamera
+        val options = arrayOf("Fotoğraf Çek", "Galeriden Seç")
+        AlertDialog.Builder(requireContext())
+            .setTitle("Olay Fotoğrafı")
+            .setItems(options) { _, i ->
+                if (i == 0) {
                     if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
                         kamerayiAc()
                     } else {
-                        requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+                        requestPermissionsLauncher.launch(arrayOf(Manifest.permission.CAMERA))
                     }
-                }
-                1 -> { // Galeri
+                } else {
                     val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
                     galleryLauncher.launch(intent)
                 }
-            }
-        }
-        builder.show()
+            }.show()
     }
 
     private fun kamerayiAc() {
         try {
             val photoFile = createImageFile()
-            // FileProvider yetkisi (AndroidManifest'teki authorities ile AYNI olmalı)
             photoURI = FileProvider.getUriForFile(
                 requireContext(),
                 "com.alisemiz.akilli_kampus_uygulamasi.fileprovider",
@@ -138,82 +208,90 @@ class AddIncidentFragment : Fragment() {
             )
             cameraLauncher.launch(photoURI)
         } catch (ex: IOException) {
-            Toast.makeText(context, "Dosya oluşturulamadı: ${ex.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Kamera hatası!", Toast.LENGTH_SHORT).show()
         }
     }
 
     @Throws(IOException::class)
     private fun createImageFile(): File {
-        // Benzersiz dosya adı: JPEG_20231025_153020_ gibi
-        val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val storageDir: File? = requireContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES)
-        return File.createTempFile(
-            "JPEG_${timeStamp}_",
-            ".jpg",
-            storageDir
-        )
+        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val storageDir = requireContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+        return File.createTempFile("OLAY_${timeStamp}_", ".jpg", storageDir)
     }
 
     private fun olayiKaydet() {
-        val title = binding.etTitle.text.toString()
-        val desc = binding.etDescription.text.toString()
-        val category = binding.spinnerCategory.selectedItem.toString()
+        val baslik = binding.etTitle.text.toString().trim()
+        val aciklama = binding.etDescription.text.toString().trim()
+        val kategori = binding.spinnerCategory.selectedItem.toString()
 
-        if (title.isEmpty() || desc.isEmpty()) {
-            Toast.makeText(context, "Lütfen başlık ve açıklama giriniz.", Toast.LENGTH_SHORT).show()
+        if (baslik.isEmpty() || aciklama.isEmpty()) {
+            Toast.makeText(context, "Lütfen boş alanları doldurun!", Toast.LENGTH_SHORT).show()
             return
         }
 
         binding.progressBar.visibility = View.VISIBLE
         binding.btnSubmit.isEnabled = false
 
+        // Eğer resim seçildiyse önce Storage'a yükle
         if (secilenGorselUri != null) {
-            // Resim varsa Firebase Storage'a yükle
-            val fileName = UUID.randomUUID().toString() + ".jpg"
-            val ref = storage.reference.child("incident_images/$fileName")
+            val dosyaAdi = "${UUID.randomUUID()}.jpg"
+            val referans = storage.reference.child("olay_resimleri/$dosyaAdi")
 
-            ref.putFile(secilenGorselUri!!)
+            referans.putFile(secilenGorselUri!!)
                 .addOnSuccessListener {
-                    ref.downloadUrl.addOnSuccessListener { uri ->
-                        firestoreKaydet(title, desc, category, uri.toString())
+                    referans.downloadUrl.addOnSuccessListener { url ->
+                        veriyiFirestoreKaydet(baslik, aciklama, kategori, url.toString())
                     }
                 }
                 .addOnFailureListener {
                     binding.progressBar.visibility = View.GONE
                     binding.btnSubmit.isEnabled = true
-                    Toast.makeText(context, "Resim yüklenemedi, tekrar deneyin.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Resim yüklenemedi!", Toast.LENGTH_SHORT).show()
                 }
         } else {
-            // Resim yoksa direkt kaydet
-            firestoreKaydet(title, desc, category, null)
+            veriyiFirestoreKaydet(baslik, aciklama, kategori, null)
         }
     }
 
-    private fun firestoreKaydet(title: String, desc: String, category: String, imageUrl: String?) {
-        val incident = hashMapOf(
-            "title" to title,
-            "description" to desc,
-            "type" to category,
+    private fun veriyiFirestoreKaydet(baslik: String, aciklama: String, kategori: String, gorselUrl: String?) {
+        val yeniOlay = hashMapOf(
+            "title" to baslik,
+            "description" to aciklama,
+            "type" to kategori,
             "status" to "Beklemede",
             "timestamp" to Timestamp(Date()),
-            "userId" to auth.currentUser!!.uid,
-            "imageUrl" to imageUrl,
+            "userId" to auth.currentUser?.uid,
+            "imageUrl" to gorselUrl,
             "followers" to emptyList<String>(),
-            "latitude" to 39.92077, // Harita entegrasyonu yoksa varsayılan veya MapFragment'tan gelen değer
-            "longitude" to 32.85411
+            "latitude" to currentLat,
+            "longitude" to currentLng
         )
 
-        db.collection("incidents").add(incident)
+        db.collection("incidents").add(yeniOlay)
             .addOnSuccessListener {
-                binding.progressBar.visibility = View.GONE
-                Toast.makeText(context, "Olay başarıyla bildirildi!", Toast.LENGTH_SHORT).show()
-                findNavController().popBackStack()
+                if (_binding != null) {
+                    binding.progressBar.visibility = View.GONE
+                    Toast.makeText(context, "Olay başarıyla kaydedildi.", Toast.LENGTH_SHORT).show()
+                    findNavController().popBackStack()
+                }
             }
             .addOnFailureListener {
-                binding.progressBar.visibility = View.GONE
-                binding.btnSubmit.isEnabled = true
-                Toast.makeText(context, "Hata oluştu: ${it.message}", Toast.LENGTH_SHORT).show()
+                if (_binding != null) {
+                    binding.progressBar.visibility = View.GONE
+                    binding.btnSubmit.isEnabled = true
+                    Toast.makeText(context, "Firestore hatası: ${it.message}", Toast.LENGTH_SHORT).show()
+                }
             }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        map.onResume()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        map.onPause()
     }
 
     override fun onDestroyView() {
