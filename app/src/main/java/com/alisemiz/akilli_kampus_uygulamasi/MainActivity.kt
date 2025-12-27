@@ -70,8 +70,7 @@ class MainActivity : AppCompatActivity() {
             when (destination.id) {
                 R.id.homeFragment,
                 R.id.mapFragment,
-                R.id.profileFragment,
-                R.id.notificationsFragment -> {
+                R.id.profileFragment -> {
                     binding.bottomNavigationView.visibility = View.VISIBLE
                 }
                 else -> {
@@ -109,7 +108,6 @@ class MainActivity : AppCompatActivity() {
             .addOnSuccessListener { document ->
                 if (document.exists()) {
                     val menu = binding.bottomNavigationView.menu
-                    menu.findItem(R.id.notificationsFragment)?.isVisible = true
                 }
             }
     }

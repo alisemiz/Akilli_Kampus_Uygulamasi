@@ -75,16 +75,10 @@
         android:id="@+id/profileFragment"
         android:name="com.alisemiz.akilli_kampus_uygulamasi.ui.profile.ProfileFragment"
         android:label="Profil"
-        tools:layout="@layout/fragment_profile" />
-
-    <fragment
-        android:id="@+id/notificationsFragment"
-        android:name="com.alisemiz.akilli_kampus_uygulamasi.ui.notifications.NotificationsFragment"
-        android:label="Takip Ettiklerim"
-        tools:layout="@layout/fragment_notifications">
+        tools:layout="@layout/fragment_profile" >
 
         <action
-            android:id="@+id/action_notificationsFragment_to_incidentDetailFragment"
+            android:id="@+id/action_profileFragment_to_incidentDetailFragment"
             app:destination="@id/incidentDetailFragment" />
     </fragment>
 
