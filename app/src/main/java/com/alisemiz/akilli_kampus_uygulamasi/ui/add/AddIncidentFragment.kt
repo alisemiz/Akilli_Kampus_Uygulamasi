@@ -27,9 +27,11 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import org.osmdroid.config.Configuration
+import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
 import java.io.File
 import java.io.IOException
@@ -40,7 +42,9 @@ import java.util.UUID
 
 /**
  * Yeni Olay Bildirme Ekranı
- * Kullanıcı buradan konum, fotoğraf ve detay girerek bildirim oluşturur.
+ * Güncellemeler:
+ * 1. Olayı ekleyen kişi otomatik olarak takipçi listesine (followers) eklenir.
+ * 2. Harita üzerinde dokunarak konum değiştirme özelliği eklendi.
  */
 class AddIncidentFragment : Fragment() {
 
@@ -53,7 +57,7 @@ class AddIncidentFragment : Fragment() {
 
     // Konum verilerini çekmek için gerekli istemci
     private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private var currentLat: Double = 39.9048 // Varsayılan: Erzurum Atatürk Üni [cite: 3]
+    private var currentLat: Double = 39.9048 // Varsayılan: Erzurum Atatürk Üni
     private var currentLng: Double = 41.2572
 
     private var secilenGorselUri: Uri? = null
@@ -112,7 +116,7 @@ class AddIncidentFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // İlk başta haritayı hazırla (Erzurum merkezli)
+        // İlk başta haritayı hazırla
         haritayiHazirla()
 
         // Konum iznini kontrol et ve varsa konumu güncelle
@@ -141,6 +145,34 @@ class AddIncidentFragment : Fragment() {
         marker?.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
         marker?.title = "Olay Konumu"
         map.overlays.add(marker)
+
+        // YENİ ÖZELLİK: Haritaya dokunarak pini taşıma
+        val mapEventsOverlay = MapEventsOverlay(object : MapEventsReceiver {
+            override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean {
+                if (p != null) {
+                    konumuGuncelle(p.latitude, p.longitude)
+                }
+                return true
+            }
+
+            override fun longPressHelper(p: GeoPoint?): Boolean {
+                // Uzun basınca da çalışsın istersen burayı da açabilirsin
+                if (p != null) {
+                    konumuGuncelle(p.latitude, p.longitude)
+                }
+                return true
+            }
+        })
+        map.overlays.add(mapEventsOverlay)
+    }
+
+    // Haritadaki pini ve değişkenleri güncelleyen yardımcı fonksiyon
+    private fun konumuGuncelle(lat: Double, lng: Double) {
+        currentLat = lat
+        currentLng = lng
+        val nokta = GeoPoint(lat, lng)
+        marker?.position = nokta
+        map.invalidate() // Haritayı yeniden çiz
     }
 
     private fun konumIzniKontrolEt() {
@@ -159,14 +191,9 @@ class AddIncidentFragment : Fragment() {
         try {
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                 if (location != null) {
-                    currentLat = location.latitude
-                    currentLng = location.longitude
-
-                    // Haritayı kullanıcının gerçek konumuna kaydır ve pini güncelle
-                    val yeniNokta = GeoPoint(currentLat, currentLng)
-                    map.controller.animateTo(yeniNokta)
-                    marker?.position = yeniNokta
-                    map.invalidate()
+                    // Cihazın gerçek konumuna git
+                    konumuGuncelle(location.latitude, location.longitude)
+                    map.controller.animateTo(GeoPoint(location.latitude, location.longitude))
                 }
             }
         } catch (e: SecurityException) {
@@ -203,7 +230,7 @@ class AddIncidentFragment : Fragment() {
             val photoFile = createImageFile()
             photoURI = FileProvider.getUriForFile(
                 requireContext(),
-                "com.alisemiz.akilli_kampus_uygulamasi.fileprovider",
+                "com.alisemiz.akilli_kampus_uygulamasi.fileprovider", // AndroidManifest'teki authority ile aynı olmalı
                 photoFile
             )
             cameraLauncher.launch(photoURI)
@@ -254,15 +281,22 @@ class AddIncidentFragment : Fragment() {
     }
 
     private fun veriyiFirestoreKaydet(baslik: String, aciklama: String, kategori: String, gorselUrl: String?) {
+        val uid = auth.currentUser?.uid ?: return
+
+        // DÜZELTME BURADA:
+        // Olayı oluşturan kişiyi (uid) followers listesine ekliyoruz.
+        // Böylece MainActivity'deki listener bunu yakalayıp bildirim gönderebilecek.
+        val takipciler = listOf(uid)
+
         val yeniOlay = hashMapOf(
             "title" to baslik,
             "description" to aciklama,
             "type" to kategori,
-            "status" to "Beklemede",
+            "status" to "Beklemede", // Yeni olaylar beklemede başlar
             "timestamp" to Timestamp(Date()),
-            "userId" to auth.currentUser?.uid,
+            "userId" to uid,
             "imageUrl" to gorselUrl,
-            "followers" to emptyList<String>(),
+            "followers" to takipciler, // <-- KRİTİK GÜNCELLEME
             "latitude" to currentLat,
             "longitude" to currentLng
         )

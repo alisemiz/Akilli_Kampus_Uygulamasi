@@ -1,11 +1,11 @@
 package com.alisemiz.akilli_kampus_uygulamasi.ui.profile
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -37,22 +37,47 @@ class ProfileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // Verileri Yükle
         kullaniciBilgileriniGetir()
         setupRecyclerView()
         takipEdilenleriGetir()
 
-        // ÇIKIŞ YAPMA İŞLEMİ (DÜZELTİLEN KISIM)
+        // YENİ: Ayarları Yönet (Switch'leri çalıştırır)
+        bildirimAyarlariniYonet()
+
+        // ÇIKIŞ YAPMA İŞLEMİ
         binding.btnLogout.setOnClickListener {
             // 1. Firebase'den çıkış yap
             auth.signOut()
 
-            // 2. Uygulamayı/Aktiviteyi yeniden başlat
-            // Bu işlem uygulamayı kapatıp açmış gibi yapar, böylece LoginFragment'a döner.
+            // 2. Uygulamayı yeniden başlatarak Login ekranına at
             val intent = requireActivity().intent
             requireActivity().finish()
             startActivity(intent)
         }
     }
+
+    // --- YENİ EKLENEN FONKSİYON: AYARLAR MANTIĞI ---
+    private fun bildirimAyarlariniYonet() {
+        // SharedPreferences (Hafıza) Erişim
+        val sharedPref = requireActivity().getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
+
+        // 1. Mevcut Durumu Yükle (Varsayılan: true/açık)
+        // Uygulama açıldığında switch'lerin doğru konumda durmasını sağlar.
+        binding.switchStatus.isChecked = sharedPref.getBoolean("pref_status_updates", true)
+        binding.switchEmergency.isChecked = sharedPref.getBoolean("pref_emergency", true)
+
+        // 2. Switch Değişikliklerini Dinle ve Kaydet
+        // Kullanıcı butona bastığı an yeni durumu hafızaya yazar.
+        binding.switchStatus.setOnCheckedChangeListener { _, isChecked ->
+            sharedPref.edit().putBoolean("pref_status_updates", isChecked).apply()
+        }
+
+        binding.switchEmergency.setOnCheckedChangeListener { _, isChecked ->
+            sharedPref.edit().putBoolean("pref_emergency", isChecked).apply()
+        }
+    }
+    // ------------------------------------------------
 
     private fun kullaniciBilgileriniGetir() {
         val uid = auth.currentUser?.uid ?: return
@@ -76,11 +101,10 @@ class ProfileFragment : Fragment() {
             listOf(),
             onClick = { id ->
                 val bundle = Bundle().apply { putString("incidentId", id) }
-                // Navigasyon hatası olursa uygulama çökmesin diye try-catch
                 try {
                     findNavController().navigate(R.id.incidentDetailFragment, bundle)
                 } catch (e: Exception) {
-                    // Eğer global action yoksa hata verebilir, ama genelde ID ile çalışır
+                    e.printStackTrace()
                 }
             },
             onLongClick = {}

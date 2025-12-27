@@ -70,33 +70,38 @@
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"/>
 
-                <TextView
-                    android:id="@+id/tvUserRole"
+                <LinearLayout
+                    android:id="@+id/layoutRoleLogout"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Öğrenci"
-                    android:textSize="14sp"
-                    android:textColor="?attr/colorPrimary"
-                    android:textStyle="bold"
-                    android:background="@drawable/bg_status_badge"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="6dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
                     android:layout_marginTop="12dp"
                     app:layout_constraintTop_toBottomOf="@id/tvUserEmail"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"/>
+                    app:layout_constraintEnd_toEndOf="parent">
 
-                <ImageButton
-                    android:id="@+id/btnLogout"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:layout_marginStart="8dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:src="@android:drawable/ic_lock_power_off"
-                    app:tint="#D32F2F"
-                    app:layout_constraintStart_toEndOf="@id/tvUserRole"
-                    app:layout_constraintTop_toTopOf="@id/tvUserRole"
-                    app:layout_constraintBottom_toBottomOf="@id/tvUserRole" />
+                    <TextView
+                        android:id="@+id/tvUserRole"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Öğrenci"
+                        android:textSize="14sp"
+                        android:textColor="?attr/colorPrimary"
+                        android:textStyle="bold"
+                        android:background="@drawable/bg_status_badge"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="6dp"/>
+
+                    <ImageButton
+                        android:id="@+id/btnLogout"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:layout_marginStart="12dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:src="@android:drawable/ic_lock_power_off"
+                        app:tint="#D32F2F" />
+                </LinearLayout>
 
                 <TextView
                     android:id="@+id/tvUnitInfo"
@@ -106,7 +111,7 @@
                     android:textSize="13sp"
                     android:textColor="#757575"
                     android:layout_marginTop="8dp"
-                    app:layout_constraintTop_toBottomOf="@id/tvUserRole"
+                    app:layout_constraintTop_toBottomOf="@id/layoutRoleLogout"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"/>
 
@@ -117,7 +122,7 @@
             android:id="@+id/tvSettingsTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Ayarlar"
+            android:text="Bildirim Ayarları"
             android:textStyle="bold"
             android:textSize="18sp"
             android:textColor="?attr/colorOnSurface"
@@ -144,7 +149,7 @@
                 android:padding="16dp">
 
                 <com.google.android.material.switchmaterial.SwitchMaterial
-                    android:id="@+id/switchStatusUpdates"
+                    android:id="@+id/switchStatus"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Durum Güncellemelerini Al"
@@ -171,7 +176,7 @@
             android:id="@+id/tvFollowHeader"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Son Bildirimler"
+            android:text="Takip Edilenler &amp; Bildirimler"
             android:textStyle="bold"
             android:textSize="18sp"
             android:textColor="?attr/colorOnSurface"
@@ -184,7 +189,7 @@
             android:id="@+id/tvEmptyState"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Henüz bildirim yok."
+            android:text="Henüz bildirim veya takip edilen olay yok."
             android:textColor="#9E9E9E"
             android:layout_marginTop="16dp"
             android:visibility="gone"
