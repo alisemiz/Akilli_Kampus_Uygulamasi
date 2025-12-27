@@ -55,7 +55,7 @@ class HomeFragment : Fragment() {
         verileriGuvenliGetir()
         checkUserRoleFromFirestore()
 
-        // SİLİNEN KISIM: binding.btnOpenMap.setOnClickListener... (Artık yok)
+        
 
         // Yeni Olay Ekleme Butonu (+)
         binding.btnAddIncident.setOnClickListener { findNavController().navigate(R.id.addIncidentFragment) }

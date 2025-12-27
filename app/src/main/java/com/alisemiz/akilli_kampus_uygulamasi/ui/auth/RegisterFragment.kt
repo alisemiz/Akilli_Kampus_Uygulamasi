@@ -34,16 +34,14 @@ class RegisterFragment : Fragment() {
         auth = FirebaseAuth.getInstance()
         firestore = FirebaseFirestore.getInstance()
 
-        // Giriş ekranına dönme butonu
         binding.tvGoToLogin.setOnClickListener {
             findNavController().navigate(R.id.action_registerFragment_to_loginFragment)
         }
 
-        // KAYIT OL BUTONU
         binding.btnRegister.setOnClickListener {
             // 1. Verileri al
             val name = binding.etRegisterName.text.toString().trim()
-            val department = binding.etRegisterDepartment.text.toString().trim() // Bu veri "unit" olacak
+            val department = binding.etRegisterDepartment.text.toString().trim()
             val email = binding.etRegisterEmail.text.toString().trim()
             val password = binding.etRegisterPassword.text.toString().trim()
 
@@ -57,7 +55,6 @@ class RegisterFragment : Fragment() {
                 return@setOnClickListener
             }
 
-            // Butonu kilitle
             binding.btnRegister.isEnabled = false
             binding.btnRegister.text = "Kaydediliyor..."
 
@@ -65,35 +62,33 @@ class RegisterFragment : Fragment() {
             auth.createUserWithEmailAndPassword(email, password)
                 .addOnSuccessListener { task ->
                     val userId = task.user!!.uid
-
-                    // ROL MANTIĞI
                     val userRole = if (email.contains("admin")) "admin" else "user"
 
-                    // 4. Firestore Veritabanına Kaydet (HASHMAP KULLANIYORUZ)
-                    // DİKKAT: Profil sayfasının okuyabilmesi için "department" verisini "unit" anahtarı ile kaydediyoruz.
+                    // --- DÜZELTİLEN KISIM BURASI ---
+                    // User sınıfı yerine HashMap kullanarak etiketleri biz belirliyoruz.
+                    // Profil sayfasının okuyabilmesi için 'department' verisini 'unit' anahtarına atıyoruz.
+
                     val userMap = hashMapOf(
                         "uid" to userId,
                         "name" to name,
                         "email" to email,
-                        "unit" to department, // <-- İŞTE BURASI DÜZELTİLDİ. Artık "Birim Yok" yazmayacak.
+                        "unit" to department, // <-- İŞTE ÇÖZÜM: 'department' değil 'unit' olarak kaydediyoruz.
                         "role" to userRole
                     )
 
+                    // 4. Firestore Veritabanına Kaydet
                     firestore.collection("users").document(userId).set(userMap)
                         .addOnSuccessListener {
                             Toast.makeText(context, "Kayıt Başarılı!", Toast.LENGTH_LONG).show()
-                            // Başarılı olunca Giriş ekranına yönlendir
                             findNavController().navigate(R.id.action_registerFragment_to_loginFragment)
                         }
                         .addOnFailureListener { e ->
-                            // Firestore hatası
                             binding.btnRegister.isEnabled = true
                             binding.btnRegister.text = "Kayıt Ol"
                             Toast.makeText(context, "Veritabanı Hatası: ${e.message}", Toast.LENGTH_LONG).show()
                         }
                 }
                 .addOnFailureListener { e ->
-                    // Auth hatası (Email zaten var vb.)
                     binding.btnRegister.isEnabled = true
                     binding.btnRegister.text = "Kayıt Ol"
                     Toast.makeText(context, "Kayıt Başarısız: ${e.message}", Toast.LENGTH_LONG).show()
