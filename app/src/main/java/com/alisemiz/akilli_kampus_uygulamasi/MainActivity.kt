@@ -7,6 +7,8 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.view.View
+import android.view.WindowInsets
+import android.view.WindowInsetsController
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
@@ -36,45 +38,56 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 1. Önce binding ve tasarımı yükle (Çökme hatasını önlemek için ilk bu yapılmalı)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // 2. Tam ekran kodunu tasarım yüklendikten SONRA çalıştır (Safe Immersive Mode)
+        window.decorView.post {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                window.insetsController?.let { controller ->
+                    controller.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+                    controller.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                window.decorView.systemUiVisibility = (
+                        View.SYSTEM_UI_FLAG_FULLSCREEN
+                                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                                or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                        )
+            }
+        }
+
+        // Navigasyon ayarları
         val navHostFragment = supportFragmentManager.findFragmentById(R.id.fragmentContainerView) as NavHostFragment
         val navController = navHostFragment.navController
-
-        // Alt menüyü bağla
         binding.bottomNavigationView.setupWithNavController(navController)
 
-        // HANGİ SAYFALARDA MENÜ GÖRÜNSÜN/GİZLENSİN?
+        // Menü görünürlük ayarları
         navController.addOnDestinationChangedListener { _, destination, _ ->
             when (destination.id) {
-                // Menünün GÖRÜNECEĞİ sayfalar (Ana Sekmeler)
                 R.id.homeFragment,
                 R.id.mapFragment,
                 R.id.profileFragment,
-                R.id.notificationsFragment -> { // Takip sekmesi burada
+                R.id.notificationsFragment -> {
                     binding.bottomNavigationView.visibility = View.VISIBLE
                 }
-
-                // Diğer tüm sayfalarda (Login, Register, Detay, Ekleme vb.) GİZLE
                 else -> {
                     binding.bottomNavigationView.visibility = View.GONE
                 }
             }
         }
 
-        // Bildirim Kanalını Oluştur
         createNotificationChannel()
 
-        // Auth Listener: Kullanıcı giriş/çıkışını dinle
         authStateListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
             val user = firebaseAuth.currentUser
             if (user != null) {
-                // Kullanıcı giriş yaptıysa menüyü ayarla ve bildirimleri aç
                 checkRoleAndAdjustMenu(user.uid)
                 baslatBildirimTakibi()
             } else {
-                // Çıkış yaptıysa dinleyicileri temizle
                 followListener?.remove()
                 emergencyListener?.remove()
             }
@@ -91,17 +104,12 @@ class MainActivity : AppCompatActivity() {
         auth.removeAuthStateListener(authStateListener)
     }
 
-    // --- MENÜ AYARLARI ---
     private fun checkRoleAndAdjustMenu(uid: String) {
         db.collection("users").document(uid).get()
             .addOnSuccessListener { document ->
                 if (document.exists()) {
-                    // DÜZELTME: Artık Admin dahil herkes Takip sekmesini görebilecek.
-                    // Eski kodda admin için gizliyorduk, şimdi herkese görünür yapıyoruz.
                     val menu = binding.bottomNavigationView.menu
                     menu.findItem(R.id.notificationsFragment)?.isVisible = true
-
-                    // İleride Admin'e özel başka bir buton gizlemek istersen burayı kullanabilirsin.
                 }
             }
     }
@@ -113,10 +121,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onPause() {
-        super.onPause()
-    }
-
     private fun baslatBildirimTakibi() {
         val uid = auth.currentUser?.uid ?: return
         val sharedPref = getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
@@ -126,7 +130,6 @@ class MainActivity : AppCompatActivity() {
         followListener?.remove()
         emergencyListener?.remove()
 
-        // 1. Takip Edilen Olayların Durum Güncellemeleri
         followListener = db.collection("incidents")
             .whereArrayContains("followers", uid)
             .addSnapshotListener { snapshots, e ->
@@ -135,13 +138,11 @@ class MainActivity : AppCompatActivity() {
                     if (doc.type == DocumentChange.Type.MODIFIED) {
                         val title = doc.document.getString("title") ?: "Olay"
                         val newStatus = doc.document.getString("status") ?: "Güncellendi"
-                        // Sadece durum değiştiyse bildirim atabiliriz veya her güncellemede
                         bildirimGonder("Durum Güncellemesi", "$title durumu '$newStatus' oldu.")
                     }
                 }
             }
 
-        // 2. Yeni Gelen ACİL Durumlar
         emergencyListener = db.collection("incidents")
             .whereEqualTo("status", "ACİL")
             .addSnapshotListener { snapshots, e ->
@@ -149,7 +150,6 @@ class MainActivity : AppCompatActivity() {
                 for (doc in snapshots!!.documentChanges) {
                     if (doc.type == DocumentChange.Type.ADDED) {
                         val timestamp = doc.document.getTimestamp("timestamp")?.toDate()
-                        // Sadece uygulama açıldıktan SONRA gelenleri bildir (Eskileri bildirme)
                         if (timestamp != null && timestamp.after(appStartTime)) {
                             val title = doc.document.getString("title") ?: "ACİL DURUM"
                             val desc = doc.document.getString("description") ?: "Kampüste acil durum!"
@@ -161,16 +161,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun bildirimGonder(baslik: String, icerik: String) {
-        // Android 13+ (Tiramisu) için İzin Kontrolü
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                // İzin yoksa gönderme (İzin isteme işlemi ayrı yapılmalı)
                 return
             }
         }
 
         val builder = NotificationCompat.Builder(this, "CHANNEL_ID")
-            .setSmallIcon(android.R.drawable.stat_sys_warning) // İkonu değiştirebilirsin
+            .setSmallIcon(android.R.drawable.stat_sys_warning)
             .setContentTitle(baslik)
             .setContentText(icerik)
             .setPriority(NotificationCompat.PRIORITY_MAX)
