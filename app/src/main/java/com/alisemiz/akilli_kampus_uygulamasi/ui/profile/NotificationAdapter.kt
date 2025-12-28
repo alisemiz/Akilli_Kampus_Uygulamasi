@@ -9,14 +9,17 @@ import com.alisemiz.akilli_kampus_uygulamasi.databinding.ItemNotificationBinding
 import java.text.SimpleDateFormat
 import java.util.Locale
 
+// Takip edilen olaylardaki güncellemeleri bildirim listesi olarak göstermek için bu adapter'ı tasarladım.
 class NotificationAdapter(
     private var notificationList: List<Incident>,
     private val onClick: (String) -> Unit
 ) : RecyclerView.Adapter<NotificationAdapter.NotificationViewHolder>() {
 
+    // Tasarım dosyamızdaki (item_notification) bileşenlere erişmek için ViewHolder sınıfımız.
     class NotificationViewHolder(val binding: ItemNotificationBinding) : RecyclerView.ViewHolder(binding.root)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): NotificationViewHolder {
+        // Her bir bildirim satırı için XML tasarımını koda bağlıyoruz.
         val binding = ItemNotificationBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return NotificationViewHolder(binding)
     }
@@ -46,7 +49,7 @@ class NotificationAdapter(
             }
         }
 
-        // Tarih
+        // Firebase'den gelen tarih verisini "01 ocak 00:00" gibi bir hale getiriyoruz.
         val sdf = SimpleDateFormat("dd MMM HH:mm", Locale("tr"))
         holder.binding.tvNotifDate.text = incident.timestamp?.toDate()?.let { sdf.format(it) } ?: ""
 
@@ -57,7 +60,7 @@ class NotificationAdapter(
     }
 
     override fun getItemCount(): Int = notificationList.size
-
+    // Veritabanından yeni bildirimler geldiğinde listeyi tazelemek için bu fonksiyonu kullanıyoruz.
     fun updateList(newList: List<Incident>) {
         notificationList = newList
         notifyDataSetChanged()

@@ -12,7 +12,6 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.alisemiz.akilli_kampus_uygulamasi.R
-import com.alisemiz.akilli_kampus_uygulamasi.data.model.Incident
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import org.osmdroid.config.Configuration
@@ -25,6 +24,7 @@ import java.util.concurrent.TimeUnit
 
 class MapFragment : Fragment() {
 
+    // Harita ve veritabanı bağlantısı için gerekli değişkenlerimizi tanımlıyoruz.
     private lateinit var map: MapView
     private lateinit var firestore: FirebaseFirestore
 
@@ -32,6 +32,7 @@ class MapFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
+        // OSMDroid harita kütüphanesinin düzgün çalışması için cihazın SharedPreferences yapılandırmasını yüklüyoruz.
         Configuration.getInstance().load(context, PreferenceManager.getDefaultSharedPreferences(context))
         return inflater.inflate(R.layout.fragment_map, container, false)
     }
@@ -39,6 +40,7 @@ class MapFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // Harita bileşenini bağlayıp temel ayarlarını (katman tipi, zoom vb.) yapıyoruz.
         map = view.findViewById(R.id.map)
         map.setTileSource(TileSourceFactory.MAPNIK)
         map.setMultiTouchControls(true)
@@ -63,15 +65,18 @@ class MapFragment : Fragment() {
                     val type = document.getString("type") ?: "Genel"
                     val timestamp = document.getTimestamp("timestamp")
 
+                    // Koordinat bilgisi eksik olan verileri pas geçiyoruz.
                     if (lat != null && lng != null) {
                         val point = GeoPoint(lat, lng)
                         val marker = Marker(map)
                         marker.position = point
                         marker.title = title
 
+                        // Marker tıklandığında görünecek küçük bilgi kutusu (snippet) hazırlığı.
                         val timeAgo = zamanFarkiHesapla(timestamp)
                         marker.snippet = "Tür: $type\n$timeAgo\n(Detay için tekrar tıkla)"
 
+                        // Olay türüne göre haritadaki ikonu özelleştiriyoruz.
                         val iconDrawable = getIconForType(requireContext(), type)
                         if (iconDrawable != null) {
                             marker.icon = iconDrawable
@@ -79,6 +84,7 @@ class MapFragment : Fragment() {
 
                         marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
 
+                        //İlk tıklamada bilgi kutusu açılır, ikinci tıklamada detaya gider.
                         marker.setOnMarkerClickListener { m, _ ->
                             if (m.isInfoWindowShown) {
                                 val bundle = Bundle().apply {
@@ -93,6 +99,7 @@ class MapFragment : Fragment() {
                         map.overlays.add(marker)
                     }
                 }
+                // Markerlar eklendikten sonra haritayı tazelememiz gerekiyor.
                 map.invalidate()
             }
             .addOnFailureListener {
@@ -102,6 +109,7 @@ class MapFragment : Fragment() {
             }
     }
 
+    // Haritadaki işaretçilerin türüne göre (Yangın, Sağlık vb.) farklı ikon ve renkte görünmesini sağlayan fonksiyon.
     private fun getIconForType(context: Context, type: String): Drawable? {
         val iconRes = when (type) {
             "Yangın" -> android.R.drawable.ic_dialog_alert
@@ -112,6 +120,7 @@ class MapFragment : Fragment() {
         }
         val drawable = ContextCompat.getDrawable(context, iconRes)
 
+        // İkonların rengini anlamlarını pekiştirecek şekilde renklendiriyoruz.
         drawable?.setTint(
             when (type) {
                 "Yangın" -> ContextCompat.getColor(context, android.R.color.holo_red_dark)
@@ -124,6 +133,7 @@ class MapFragment : Fragment() {
         return drawable
     }
 
+    // Olayın üzerinden ne kadar vakit geçtiğini "1 saat önce" gibi okunabilir hale getiren yardımcı fonksiyon.
     private fun zamanFarkiHesapla(timestamp: Timestamp?): String {
         if (timestamp == null) return ""
 
@@ -143,6 +153,7 @@ class MapFragment : Fragment() {
         }
     }
 
+    // Harita döngülerini Android yaşam döngüsüyle uyumlu hale getirerek performans kaybını önlüyoruz.
     override fun onResume() {
         super.onResume()
         map.onResume()

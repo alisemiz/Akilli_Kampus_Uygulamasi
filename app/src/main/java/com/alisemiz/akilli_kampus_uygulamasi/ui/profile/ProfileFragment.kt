@@ -1,7 +1,6 @@
 package com.alisemiz.akilli_kampus_uygulamasi.ui.profile
 
 import android.content.Context
-import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -37,12 +36,12 @@ class ProfileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Verileri Yükle
+        //Sayfa açıldığında verileri otomatik çekip ekrana basıyoruz.
         kullaniciBilgileriniGetir()
         setupRecyclerView()
         takipEdilenleriGetir()
 
-        // YENİ: Ayarları Yönet (Switch'leri çalıştırır)
+        // Switch butonlarının mantığını çalıştırıyoruz.
         bildirimAyarlariniYonet()
 
         // ÇIKIŞ YAPMA İŞLEMİ
@@ -57,17 +56,14 @@ class ProfileFragment : Fragment() {
         }
     }
 
-    // --- YENİ EKLENEN FONKSİYON: AYARLAR MANTIĞI ---
     private fun bildirimAyarlariniYonet() {
         // SharedPreferences (Hafıza) Erişim
         val sharedPref = requireActivity().getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
 
-        // 1. Mevcut Durumu Yükle (Varsayılan: true/açık)
         // Uygulama açıldığında switch'lerin doğru konumda durmasını sağlar.
         binding.switchStatus.isChecked = sharedPref.getBoolean("pref_status_updates", true)
         binding.switchEmergency.isChecked = sharedPref.getBoolean("pref_emergency", true)
 
-        // 2. Switch Değişikliklerini Dinle ve Kaydet
         // Kullanıcı butona bastığı an yeni durumu hafızaya yazar.
         binding.switchStatus.setOnCheckedChangeListener { _, isChecked ->
             sharedPref.edit().putBoolean("pref_status_updates", isChecked).apply()
@@ -113,6 +109,7 @@ class ProfileFragment : Fragment() {
         binding.rvFollowedIncidents.adapter = adapter
     }
 
+    // Kullanıcının takip ettiği son 5 bildirimi Firestore'dan çekiyoruz.
     private fun takipEdilenleriGetir() {
         val uid = auth.currentUser?.uid ?: return
 
@@ -130,7 +127,7 @@ class ProfileFragment : Fragment() {
                         if (incident != null) liste.add(incident)
                     }
                     adapter.updateList(liste)
-
+                    // Liste boş değilse UI'da ilgili kısımları göster.
                     binding.rvFollowedIncidents.visibility = View.VISIBLE
                     binding.tvEmptyState.visibility = View.GONE
                 } else {
@@ -142,6 +139,7 @@ class ProfileFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        // Bellek sızıntısı olmaması için binding'i null'a çekiyoruz.
         _binding = null
     }
 }

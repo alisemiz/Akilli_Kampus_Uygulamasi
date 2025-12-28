@@ -28,16 +28,19 @@ import java.util.Date
 
 class MainActivity : AppCompatActivity() {
 
+    // Görünüm bağlama ve veritabanı bağlantılarımızı en başta tanımlıyoruz.
     private lateinit var binding: ActivityMainBinding
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
 
+    // Dinleyicileri (Listener) değişken olarak tutuyoruz ki uygulama kapanınca durdurabilelim.
     private var followListener: ListenerRegistration? = null
     private var emergencyListener: ListenerRegistration? = null
 
     private val appStartTime = Date()
     private lateinit var authStateListener: FirebaseAuth.AuthStateListener
 
+    // Android 13 ve üzeri için bildirim izni isteme mekanizması.
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
@@ -52,6 +55,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         // Tam Ekran Ayarları
+        //Durum çubuğu ve navigasyon tuşlarını gizledim.
         window.decorView.post {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 window.insetsController?.let { controller ->
@@ -66,8 +70,10 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // Bildirim iznini kontrol et ve gerekirse iste.
         askNotificationPermission()
 
+        // Alt menüyü  navigasyon kontrolcüsüne bağlıyoruz.
         val navHostFragment = supportFragmentManager.findFragmentById(R.id.fragmentContainerView) as NavHostFragment
         val navController = navHostFragment.navController
         binding.bottomNavigationView.setupWithNavController(navController)
@@ -80,9 +86,10 @@ class MainActivity : AppCompatActivity() {
                 else -> binding.bottomNavigationView.visibility = View.GONE
             }
         }
-
+        //Gerekli olan bildirim kanallarını oluşturuyoruz.
         createNotificationChannel()
 
+        // Kullanıcı giriş yapmışsa bildirim takibini başlat,çıkış yapmışsa dinleyicileri kapat.
         authStateListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
             val user = firebaseAuth.currentUser
             if (user != null) {
@@ -120,13 +127,14 @@ class MainActivity : AppCompatActivity() {
         durdurDinleyiciler()
         val uid = auth.currentUser?.uid ?: return
 
-        // 1. TAKİP BİLDİRİMLERİ (Normal)
+        // 1. TAKİP BİLDİRİMLERİ: Sadece kullanıcının 'takip et' dediği olaylardaki değişiklikleri dinler.
         followListener = db.collection("incidents")
             .whereArrayContains("followers", uid)
             .addSnapshotListener { snapshots, e ->
                 if (e != null) return@addSnapshotListener
 
                 for (doc in snapshots!!.documentChanges) {
+                    // Sadece var olan bir olay güncellendiğinde bildirim gönderiyoruz.
                     if (doc.type == DocumentChange.Type.MODIFIED) {
                         val title = doc.document.getString("title") ?: "Olay"
                         val newStatus = doc.document.getString("status") ?: "Güncellendi"
@@ -137,7 +145,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-        // 2. ACİL DURUMLAR
+        // 2. ACİL DURUMLAR: Takip etsin etmesin, tüm kullanıcılar için 'ACİL' olanları dinler.
         emergencyListener = db.collection("incidents")
             .whereEqualTo("status", "ACİL")
             .addSnapshotListener { snapshots, e ->
@@ -162,7 +170,9 @@ class MainActivity : AppCompatActivity() {
         emergencyListener?.remove()
     }
 
+    // YEREL BİLDİRİM GÖNDERME FONKSİYONU
     private fun bildirimGonder(baslik: String, icerik: String, isEmergency: Boolean) {
+        // Kullanıcının profil sayfasından yaptığı bildirim tercihlerini kontrol ediyoruz.
         val sharedPref = getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
         val allowStatusUpdates = sharedPref.getBoolean("pref_status_updates", true)
         val allowEmergency = sharedPref.getBoolean("pref_emergency", true)

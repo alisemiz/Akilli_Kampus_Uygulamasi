@@ -16,6 +16,7 @@ import com.google.firebase.auth.FirebaseAuth
 
 class LoginFragment : Fragment() {
 
+    // ViewBinding için klasik tanımlama, bellekte sızıntı yapmasın diye null yapıyoruz sonda
     private var _binding: FragmentLoginBinding? = null
     private val binding get() = _binding!!
 
@@ -34,18 +35,17 @@ class LoginFragment : Fragment() {
 
         auth = FirebaseAuth.getInstance()
 
-        // 1. OTOMATİK GİRİŞ KONTROLÜ
-        // Kullanıcı zaten giriş yapmışsa direkt ana sayfaya al
+        // Uygulama her açıldığında tekrar şifre sormasın, eğer token varsa direkt içeri alalım.
         if (auth.currentUser != null) {
             anaSayfayaYonlendir()
         }
 
-        // Kayıt Ol Ekranına Geçiş
+        // Hesabı olmayanları kayıt ekranına paslıyoruz.
         binding.tvGoToRegister.setOnClickListener {
             findNavController().navigate(R.id.action_loginFragment_to_registerFragment)
         }
 
-        // 2. ŞİFREMİ UNUTTUM DİALOGU
+        // Şifresini unutanlar için ufak bir pop-up açıp mail istiyoruz, Firebase hallediyor gerisini.
         binding.tvForgotPassword.setOnClickListener {
             val builder = AlertDialog.Builder(requireContext())
             builder.setTitle("Şifre Sıfırlama")
@@ -60,8 +60,12 @@ class LoginFragment : Fragment() {
                 val emailToSend = inputEmail.text.toString().trim()
                 if (emailToSend.isNotEmpty()) {
                     auth.sendPasswordResetEmail(emailToSend)
-                        .addOnSuccessListener { Toast.makeText(context, "Sıfırlama bağlantısı gönderildi!", Toast.LENGTH_LONG).show() }
-                        .addOnFailureListener { e -> Toast.makeText(context, "Hata: ${e.message}", Toast.LENGTH_LONG).show() }
+                        .addOnSuccessListener {
+                            Toast.makeText(context, "Sıfırlama bağlantısı gönderildi!", Toast.LENGTH_LONG).show()
+                        }
+                        .addOnFailureListener { e ->
+                            Toast.makeText(context, "Hata: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
                 } else {
                     Toast.makeText(context, "Lütfen geçerli bir e-posta yazın.", Toast.LENGTH_SHORT).show()
                 }
@@ -71,29 +75,28 @@ class LoginFragment : Fragment() {
             builder.show()
         }
 
-        // 3. GİRİŞ YAP BUTONU
+        // Login bilgilerini alıp Firebase'e yolluyoruz.
         binding.btnLogin.setOnClickListener {
             val email = binding.etLoginEmail.text.toString().trim()
             val password = binding.etLoginPassword.text.toString().trim()
 
-            // Boş alan kontrolü
+            // Boş bırakıp girmeye çalışmasınlar diye basit bir mesaj
             if (email.isEmpty() || password.isEmpty()) {
                 Toast.makeText(context, "E-posta veya şifre boş olamaz!", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            // Butonu kilitle
+            // İşlem sürerken butona arka arkaya basıp uygulamayı yormasınlar diye kilitliyoruz.
             binding.btnLogin.isEnabled = false
             binding.btnLogin.text = "Giriş Yapılıyor..."
 
-            // Firebase Auth Girişi
+            // Firebase Auth ile giriş denemesi
             auth.signInWithEmailAndPassword(email, password)
                 .addOnSuccessListener {
-                    // Başarılı olursa direkt yönlendir
                     anaSayfayaYonlendir()
                 }
                 .addOnFailureListener { e ->
-                    // Hata durumunda butonu aç
+                    // Hata olursa butonu tekrar aktif edip hatayı gösteriyoruz
                     binding.btnLogin.isEnabled = true
                     binding.btnLogin.text = "Giriş Yap"
                     Toast.makeText(context, "Giriş Başarısız: ${e.message}", Toast.LENGTH_LONG).show()
@@ -101,17 +104,15 @@ class LoginFragment : Fragment() {
         }
     }
 
-    // TEK YÖNLENDİRME FONKSİYONU
-    // Admin de olsa User da olsa hepsi 'homeFragment'a gider.
-    // Yetki kontrolü HomeFragment içinde yapılır.
+    // Yetki olayını HomeFragment içerisinde Firestore'dan kontrol ettireceğiz.
     private fun anaSayfayaYonlendir() {
         Toast.makeText(context, "Giriş Başarılı", Toast.LENGTH_SHORT).show()
-        // AdminHomeFragment yönlendirmesini kaldırdık, herkes HomeFragment'a gidiyor.
         findNavController().navigate(R.id.action_loginFragment_to_homeFragment)
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
+        // Binding'i null yaparak Memory Leak'in önüne geçiyoruz
         _binding = null
     }
 }

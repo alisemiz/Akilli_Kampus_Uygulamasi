@@ -12,15 +12,18 @@ import com.bumptech.glide.Glide
 import java.text.SimpleDateFormat
 import java.util.Locale
 
+// Olayları ana sayfadaki listede düzgün bir şekilde göstermek için bu adapter'ı yazdık.
 class IncidentAdapter(
     private var incidentList: List<Incident>,
     private val onClick: (String) -> Unit,       // Normal Tıklama (Detay)
     private val onLongClick: (String) -> Unit    // Uzun Tıklama (Silme)
 ) : RecyclerView.Adapter<IncidentAdapter.IncidentViewHolder>() {
 
+    // Görünüm tutucu sınıfımız, tasarım dosyamızdaki bileşenlere erişmemizi sağlıyor.
     class IncidentViewHolder(val binding: ItemIncidentBinding) : RecyclerView.ViewHolder(binding.root)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): IncidentViewHolder {
+        // Her bir liste elemanı için tasarımı (binding) oluşturuyoruz.
         val binding = ItemIncidentBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return IncidentViewHolder(binding)
     }
@@ -73,6 +76,7 @@ class IncidentAdapter(
             }
         }
 
+        // Uzun tıklama özelliği: Adminlerin silme onay kutusunu açması için tasarlandı.
         holder.itemView.setOnLongClickListener {
             if (incident.id.isNotEmpty()) {
                 onLongClick(incident.id)
@@ -85,6 +89,7 @@ class IncidentAdapter(
 
     override fun getItemCount(): Int = incidentList.size
 
+    // Veriler değiştiğinde (arama yapıldığında veya yeni olay eklendiğinde) listeyi yenilemek için bu fonksiyonu kullanıyoruz.
     fun updateList(newList: List<Incident>) {
         incidentList = newList
         notifyDataSetChanged()
